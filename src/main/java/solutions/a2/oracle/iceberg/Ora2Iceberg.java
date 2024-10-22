@@ -77,8 +77,8 @@ public class Ora2Iceberg {
 
 	private static void setupCliOptions(final Options options) {
 		// Source connection
-		final Option sourceJdbcUrl = Option.builder("src")
-				.argName("source-jdbc-url")
+		final Option sourceJdbcUrl = Option.builder("u")
+				.longOpt("source-jdbc-url")
 				.hasArg(true)
 				.required(true)
 				.desc("Oracle JDBC URL of source connection")
@@ -86,7 +86,7 @@ public class Ora2Iceberg {
 		options.addOption(sourceJdbcUrl);
 
 		final Option sourceUser = Option.builder("u")
-				.argName("source-user")
+				.longOpt("source-user")
 				.hasArg(true)
 				.required(true)
 				.desc("Oracle user for source connection ")
@@ -94,7 +94,7 @@ public class Ora2Iceberg {
 		options.addOption(sourceUser);
 
 		final Option sourcePassword = Option.builder("p")
-				.argName("source-password")
+				.longOpt("source-password")
 				.hasArg(true)
 				.required(true)
 				.desc("Password for source connection")
@@ -103,7 +103,7 @@ public class Ora2Iceberg {
 
 		// Source object description
 		final Option sourceSchema = Option.builder("s")
-				.argName("source-schema")
+				.longOpt("source-schema")
 				.hasArg(true)
 				.required(false)
 				.desc("Source schema name. If not specified - value of <source-user> is used")
@@ -111,7 +111,7 @@ public class Ora2Iceberg {
 		options.addOption(sourceSchema);
 
 		final Option sourceObject = Option.builder("o")
-				.argName("source-object")
+				.longOpt("source-object")
 				.hasArg(true)
 				.required(true)
 				.desc("The name of source table or view, or valid SQL SELECT statement to query data")
@@ -119,7 +119,7 @@ public class Ora2Iceberg {
 		options.addOption(sourceObject);
 
 		final Option whereClause = Option.builder("w")
-				.argName("where-clause")
+				.longOpt("where-clause")
 				.hasArg(true)
 				.required(false)
 				.desc("Optional where clause for the <source-object>. Valid only when <source-object> points to table or view.")
@@ -127,7 +127,7 @@ public class Ora2Iceberg {
 		options.addOption(whereClause);
 
 		final Option addRowId = Option.builder("r")
-				.argName("add-rowid-to-iceberg")
+				.longOpt("add-rowid-to-iceberg")
 				.hasArg(false)
 				.required(false)
 				.desc("When specified ROWID pseudocolumn is added to destination as VARCHAR column with name ORA_ROW_ID ansd used as ID. Valid only when <source-object> points to a RDBMS table")
@@ -135,7 +135,7 @@ public class Ora2Iceberg {
 		options.addOption(addRowId);
 
 		final Option rowIdColumnName = Option.builder("n")
-				.argName("rowid-column-name")
+				.longOpt("rowid-column-name")
 				.hasArg(true)
 				.required(false)
 				.desc("Specifies the name for the column in destination table storing the source ROWIDs. Default - " + ROWID_KEY)
@@ -143,7 +143,7 @@ public class Ora2Iceberg {
 		options.addOption(rowIdColumnName);
 
 		final Option catalogImpl = Option.builder("I")
-				.argName("iceberg-catalog-implementation")
+				.longOpt("iceberg-catalog-implementation")
 				.hasArg(true)
 				.required(true)
 				.desc("One of " +
@@ -156,7 +156,7 @@ public class Ora2Iceberg {
 		options.addOption(catalogImpl);
 
 		final Option catalogName = Option.builder("N")
-				.argName("iceberg-catalog-name")
+				.longOpt("iceberg-catalog-name")
 				.hasArg(true)
 				.required(true)
 				.desc("Apache Iceberg Catalog name")
@@ -164,7 +164,7 @@ public class Ora2Iceberg {
 		options.addOption(catalogName);
 
 		final Option catalogUri = Option.builder("U")
-				.argName("iceberg-catalog-uri")
+				.longOpt("iceberg-catalog-uri")
 				.hasArg(true)
 				.required(true)
 				.desc("Apache Iceberg Catalog URI")
@@ -172,7 +172,7 @@ public class Ora2Iceberg {
 		options.addOption(catalogUri);
 
 		final Option catalogWarehouse = Option.builder("W")
-				.argName("iceberg-warehouse-location")
+				.longOpt("iceberg-warehouse-location")
 				.hasArg(true)
 				.required(true)
 				.desc("Apache Iceberg warehouse location")
@@ -180,7 +180,7 @@ public class Ora2Iceberg {
 		options.addOption(catalogWarehouse);
 
 		final Option catalogProperties = Option.builder("P")
-				.argName("iceberg-catalog-properties")
+				.longOpt("iceberg-catalog-properties")
 				.hasArgs()
 				.required(false)
 				.desc("Additional properties for Apache Iceberg catalog implementation")
@@ -188,7 +188,7 @@ public class Ora2Iceberg {
 		options.addOption(catalogProperties);
 
 		final Option icebergTable = Option.builder("T")
-				.argName("iceberg-table-name")
+				.longOpt("iceberg-table-name")
 				.hasArg(true)
 				.required(false)
 				.desc("Apache Iceberg table name. When not specified and <source-object> is view or table, name of <source-object> is used.")
