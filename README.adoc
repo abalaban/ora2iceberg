@@ -1,0 +1,32 @@
+= ora2iceberg Data Pipe
+
+== Introduction
+
+== Building from source
+After you've downloaded the code from GitHub, you can build it using Gradle. Use this command:
+---- 
+gradle clean build
+----
+ 
+The generated jar files can be found at: `build/libs/`.
+
+An uber jar containing the library and all its relocated dependencies can also be built. Use this command: 
+----
+gradle clean shadowJar
+----
+
+The generated uber jar file can also be found at: `build/libs/`.
+ 
+=== Validating secure dependencies
+To ensure no security vulnerabilities in the dependency libraries, run the following.
+----
+gradle dependencyCheckAnalyze
+----
+
+== Authors
+**Aleksej Veremeev** - *Initial work* - http://a2-solutions.eu/[A2 Rešitve d.o.o.]
+
+== License
+
+This project is licensed under the Apache-2.0 License.
+

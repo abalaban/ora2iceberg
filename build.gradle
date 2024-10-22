@@ -1,0 +1,267 @@
+/**
+ * Copyright (c) 2018-present, A2 Rešitve d.o.o.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is
+ * distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See
+ * the License for the specific language governing permissions and limitations under the License.
+ */
+
+plugins {
+	id "java-library"
+	id "com.github.johnrengelman.shadow" version "8.1.1"
+	id "org.owasp.dependencycheck" version "10.0.4"
+	id "maven-publish"
+    id "signing"
+}
+
+java {
+	withSourcesJar()
+	withJavadocJar()
+	sourceCompatibility = JavaVersion.VERSION_17
+	targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+	mavenCentral()
+}
+
+import java.nio.file.Paths
+
+def readVersion() {
+	def versionPropsFile = file(Paths.get("src","main","resources","ora2iceberg.properties"))
+	if (versionPropsFile.canRead()) {
+		Properties versionProps = new Properties()
+
+		if (versionPropsFile.canRead()) {
+			versionProps.load(new FileInputStream(versionPropsFile))
+		}
+		versionProps['version']
+	} else {
+		throw new GradleException("Could not read version.properties!")
+	}
+}
+
+version = readVersion()
+group "solutions.a2.oracle.iceberg"
+
+dependencies {
+	def oracleJdbcVersion = "23.4.0.24.05"
+	// https://mvnrepository.com/artifact/com.oracle.database.jdbc/ojdbc11
+	implementation("com.oracle.database.jdbc:ojdbc11:$oracleJdbcVersion")
+	// https://mvnrepository.com/artifact/com.oracle.database.jdbc/ucp11
+	implementation("com.oracle.database.jdbc:ucp11:$oracleJdbcVersion")
+
+	def lZ4Version = "1.8.0"
+	// https://mvnrepository.com/artifact/org.lz4/lz4-java
+	implementation("org.lz4:lz4-java:$lZ4Version")
+
+	def snappyVersion = "1.1.10.7"
+	// https://mvnrepository.com/artifact/org.xerial.snappy/snappy-java
+	implementation("org.xerial.snappy:snappy-java:$snappyVersion")
+
+	def zStdVersion = "1.5.6-6"
+	// https://mvnrepository.com/artifact/com.github.luben/zstd-jni
+	implementation("com.github.luben:zstd-jni:$zStdVersion")
+
+	def commonsCompressVersion = "1.27.1"
+	// https://mvnrepository.com/artifact/org.apache.commons/commons-compress
+	implementation("org.apache.commons:commons-compress:$commonsCompressVersion")
+
+	def commonsCliVersion = "1.9.0"
+	// https://mvnrepository.com/artifact/commons-cli/commons-cli
+	implementation("commons-cli:commons-cli:$commonsCliVersion")
+
+	def commonsLang3Version = "3.17.0"
+	// https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
+	implementation("org.apache.commons:commons-lang3:$commonsLang3Version")
+
+	def slf4jVersion = "2.0.16"
+	// https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+	implementation("org.slf4j:slf4j-api:$slf4jVersion")
+	// https://mvnrepository.com/artifact/org.slf4j/slf4j-reload4j
+	implementation("org.slf4j:slf4j-reload4j:$slf4jVersion")
+ 
+	def avroVersion = "1.12.0"
+	// https://mvnrepository.com/artifact/org.apache.avro/avro
+	implementation("org.apache.avro:avro:$avroVersion")
+
+	def parquetVersion = "1.14.3"
+	// https://mvnrepository.com/artifact/org.apache.parquet/parquet-common
+	implementation("org.apache.parquet:parquet-common:$parquetVersion")
+	// https://mvnrepository.com/artifact/org.apache.parquet/parquet-column
+	implementation("org.apache.parquet:parquet-column:$parquetVersion")
+	// https://mvnrepository.com/artifact/org.apache.parquet/parquet-hadoop
+	implementation("org.apache.parquet:parquet-hadoop:$parquetVersion")
+	// https://mvnrepository.com/artifact/org.apache.parquet/parquet-avro
+	implementation("org.apache.parquet:parquet-avro:$parquetVersion")
+
+	def hadoopVersion = "3.4.0"
+	// https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-mapreduce-client-core
+	implementation("org.apache.hadoop:hadoop-mapreduce-client-core:$hadoopVersion") {
+		exclude group: 'ch.qos.reload4j'
+		exclude group: 'com.google.protobuf'
+		exclude group: 'com.google.inject.extensions'
+		exclude group: 'commons-beanutils'
+		exclude group: 'commons-cli'
+		exclude group: 'commons-codec'
+		exclude group: 'commons-io'
+		exclude group: 'commons-net'
+		exclude group: 'commons-pool'
+		exclude group: 'io.netty'
+		exclude group: 'javax.ws.rs'
+		exclude group: 'org.apache.avro'
+		exclude group: 'org.apache.hadoop', module: 'hadoop-annotations'
+		exclude group: 'org.apache.hadoop', module: 'hadoop-yarn-client'
+		exclude group: 'org.apache.hadoop', module: 'hadoop-yarn-common'
+		exclude group: 'org.apache.hadoop', module: 'hadoop-hdfs-client'
+		exclude group: 'org.slf4j'
+	}
+	// https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-common
+	implementation("org.apache.hadoop:hadoop-common:$hadoopVersion") {
+		exclude group: 'ch.qos.reload4j'
+		exclude group: 'com.github.pjfanning'
+		exclude group: 'com.google.code.findbugs', module: 'jsr305'
+		exclude group: 'com.google.guava', module: 'guava'
+		exclude group: 'com.google.protobuf'
+		exclude group: 'com.sun.jersey'
+		exclude group: 'com.sun.jersey.contribs'
+		exclude group: 'com.sun.xml.bind'
+		exclude group: 'com.jcraft', module: 'jsch'
+		exclude group: 'commons-beanutils'
+		exclude group: 'commons-cli'
+		exclude group: 'commons-codec'
+		exclude group: 'commons-io'
+		exclude group: 'commons-net'
+		exclude group: 'commons-pool'
+		exclude group: 'dnsjava'
+		exclude group: 'io.netty'
+		exclude group: 'jakarta.activation'
+		exclude group: 'javax.servlet'
+		exclude group: 'javax.servlet.jsp'
+		exclude group: 'javax.xml.bind'
+		exclude group: 'log4j'
+		exclude group: 'org.apache.avro'
+		exclude group: 'org.apache.commons', module: 'commons-text'
+		exclude group: 'org.apache.commons', module: 'commons-math3'
+		exclude group: 'org.apache.commons', module: 'commons-lang3'
+		exclude group: 'org.apache.curator'
+		exclude group: 'org.apache.hadoop', module: 'hadoop-annotations'
+		exclude group: 'org.apache.hadoop.thirdparty', module: 'hadoop-shaded-protobuf_3_21'
+		exclude group: 'org.apache.httpcomponents', module: 'httpclient'
+		exclude group: 'org.apache.kerby'
+		exclude group: 'org.apache.zookeeper'
+		exclude group: 'org.eclipse.jetty'
+		exclude group: 'org.eclipse.jetty.websocket'
+		exclude group: 'org.slf4j'
+	}
+
+	def icebergVersion = "1.6.1"
+	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-core
+	implementation("org.apache.iceberg:iceberg-core:$icebergVersion")
+	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-data
+	implementation("org.apache.iceberg:iceberg-data:$icebergVersion")
+	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-parquet
+	implementation("org.apache.iceberg:iceberg-parquet:$icebergVersion")
+	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-orc
+	implementation("org.apache.iceberg:iceberg-orc:$icebergVersion")
+	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-api
+	implementation("org.apache.iceberg:iceberg-api:$icebergVersion")
+ 
+	def jacksonVersion = "2.18.0"
+	// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core
+	implementation("com.fasterxml.jackson.core:jackson-core:$jacksonVersion")
+	// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations
+	implementation("com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion")
+	// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
+	implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
+ 
+	def jUnitVersion = "5.10.3"
+	// https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api
+	testImplementation("org.junit.jupiter:junit-jupiter-api:$jUnitVersion")
+	// https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-engine
+	testImplementation("org.junit.jupiter:junit-jupiter-engine:$jUnitVersion")
+}
+
+
+jar {
+	duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
+	manifest {
+		attributes "Main-Class": "solutions.a2.oracle.iceberg.pipe.Ora2Iceberg"
+	}
+}
+
+shadowJar {
+	duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
+	manifest {
+		attributes "Main-Class": "solutions.a2.oracle.iceberg.pipe.Ora2Iceberg"
+	}
+}
+
+test {
+	useJUnitPlatform {
+		excludeTags 'ignored'
+	}
+}
+
+publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			from components.java
+
+			pom {
+				name = "Ora2Iceberg"
+				packaging = "jar"
+				url = "https://github.com/averemee-si/ora2iceberg"
+				description =
+					"Transfer data from Oracle database tables, views, and query results to Apache Iceberg tables"
+				organization {
+					name = "A2 Rešitve, d.o.o."
+					url = "https://a2-solutions.eu/"
+				}
+				scm {
+					url = "https://github.com/averemee-si/ora2iceberg"
+					connection = "scm:git:https://github.com/averemee-si/ora2iceberg.git"
+					developerConnection = "scm:git:git@github.com:averemee-si/ora2iceberg.git"
+				}
+				licenses {
+					license {
+						name = "The Apache License, Version 2.0"
+						url = "https://a2-solutions.eu/licenses/apache/LICENSE.txt"
+					}
+				}
+				developers {
+					developer {
+						id = "averemee-si"
+						name = "Aleksei Veremeev"
+						email = "averemee@a2.solutions"
+						timezone = "Europe/Ljubljana"
+						organization = "A2 Rešitve, d.o.o."
+						organizationUrl = "https://a2-solutions.eu/"
+					}
+				}
+			}
+		}
+	}
+
+	repositories {
+		maven {
+			url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+			credentials {
+				username = project.hasProperty('ossrh.Username') ? project.property('ossrh.Username') : ""
+				password = project.hasProperty('ossrh.Password') ? project.property('ossrh.Password') : ""
+			}
+		}
+	}
+}
+
+signing {
+	def signingKey = project.hasProperty('signing.Key') ? project.property('signing.Key') : ""
+	def signingPassword = project.hasProperty('signing.Password') ? project.property('signing.Password') : ""
+	useInMemoryPgpKeys(signingKey, signingPassword)
+	sign publishing.publications.mavenJava
+}
