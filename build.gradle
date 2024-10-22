@@ -171,6 +171,10 @@ dependencies {
 	implementation("org.apache.iceberg:iceberg-orc:$icebergVersion")
 	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-api
 	implementation("org.apache.iceberg:iceberg-api:$icebergVersion")
+	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-hive-metastore
+	implementation("org.apache.iceberg:iceberg-hive-metastore:$icebergVersion")
+	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-nessie
+	implementation("org.apache.iceberg:iceberg-nessie:$icebergVersion")
  
 	def jacksonVersion = "2.18.0"
 	// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core
@@ -180,6 +184,10 @@ dependencies {
 	// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
 	implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
  
+	def nessieVersion = "0.99.0"
+	// https://mvnrepository.com/artifact/org.projectnessie.nessie/nessie-client
+	implementation("org.projectnessie.nessie:nessie-client:$nessieVersion")
+
 	def jUnitVersion = "5.10.3"
 	// https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api
 	testImplementation("org.junit.jupiter:junit-jupiter-api:$jUnitVersion")
@@ -191,14 +199,14 @@ dependencies {
 jar {
 	duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
 	manifest {
-		attributes "Main-Class": "solutions.a2.oracle.iceberg.pipe.Ora2Iceberg"
+		attributes "Main-Class": "solutions.a2.oracle.iceberg.Ora2Iceberg"
 	}
 }
 
 shadowJar {
 	duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
 	manifest {
-		attributes "Main-Class": "solutions.a2.oracle.iceberg.pipe.Ora2Iceberg"
+		attributes "Main-Class": "solutions.a2.oracle.iceberg.Ora2Iceberg"
 	}
 }
 
