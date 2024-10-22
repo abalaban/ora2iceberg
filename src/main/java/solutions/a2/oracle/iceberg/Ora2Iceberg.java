@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * 
- * ExpImpPipe entry point
+ * Ora2Iceberg entry point
  * 
  * @author <a href="mailto:averemee@a2.solutions">Aleksei Veremeev</a>
  */
