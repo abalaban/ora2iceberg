@@ -13,6 +13,9 @@
 
 package solutions.a2.oracle.iceberg;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -33,6 +36,20 @@ public class Ora2Iceberg {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(Ora2Iceberg.class);
 	private static final String ROWID_KEY = "ORA_ROW_ID";
+
+	private static final String CATALOG_IMPL_REST = "REST";
+	private static final String CATALOG_IMPL_JDBC = "JDBC";
+	private static final String CATALOG_IMPL_HADOOP = "HADOOP";
+	private static final String CATALOG_IMPL_HIVE = "HIVE";
+	private static final String CATALOG_IMPL_NESSIE = "NESSIE";
+	private static final Map<String, String> CATALOG_IMPL = new HashMap<>();
+	static {
+		CATALOG_IMPL.put(CATALOG_IMPL_REST, "org.apache.iceberg.rest.RESTCatalog");
+		CATALOG_IMPL.put(CATALOG_IMPL_JDBC, "org.apache.iceberg.jdbc.JdbcCatalog");
+		CATALOG_IMPL.put(CATALOG_IMPL_HADOOP, "org.apache.iceberg.hadoop.HadoopCatalog");
+		CATALOG_IMPL.put(CATALOG_IMPL_HIVE, "org.apache.iceberg.hive.HiveCatalog");
+		CATALOG_IMPL.put(CATALOG_IMPL_NESSIE, "org.apache.iceberg.nessie.NessieCatalog");
+	}
 
 	public static void main(String[] argv) {
 		LOGGER.info("Starting...");
@@ -60,60 +77,123 @@ public class Ora2Iceberg {
 
 	private static void setupCliOptions(final Options options) {
 		// Source connection
-		final Option sourceJdbcUrl = new Option("src", "source-jdbc-url", true,
-				"Oracle JDBC URL of source connection");
-		sourceJdbcUrl.setRequired(true);
+		final Option sourceJdbcUrl = Option.builder("src")
+				.argName("source-jdbc-url")
+				.hasArg(true)
+				.required(true)
+				.desc("Oracle JDBC URL of source connection")
+				.build();
 		options.addOption(sourceJdbcUrl);
-		final Option sourceUser = new Option("u", "source-user", true,
-				"Oracle user for source connection");
-		sourceUser.setRequired(true);
+
+		final Option sourceUser = Option.builder("u")
+				.argName("source-user")
+				.hasArg(true)
+				.required(true)
+				.desc("Oracle user for source connection ")
+				.build();
 		options.addOption(sourceUser);
-		final Option sourcePassword = new Option("p", "source-password", true,
-				"Password for source connection");
-		sourcePassword.setRequired(true);
+
+		final Option sourcePassword = Option.builder("p")
+				.argName("source-password")
+				.hasArg(true)
+				.required(true)
+				.desc("Password for source connection")
+				.build();
 		options.addOption(sourcePassword);
-		// Destination connection
-		final Option destJdbcUrl = new Option("dest", "destination-jdbc-url", true,
-				"Oracle JDBC URL of destination connection");
-		destJdbcUrl.setRequired(true);
-		options.addOption(destJdbcUrl);
-		final Option destUser = new Option("U", "destination-user", true,
-				"Oracle user for destination connection");
-		destUser.setRequired(true);
-		options.addOption(destUser);
-		final Option destPassword = new Option("P", "destination-password", true,
-				"Password for destination connection");
-		destPassword.setRequired(true);
-		options.addOption(destPassword);
-		// Object description
-		final Option sourceSchema = new Option("s", "source-schema", true,
-				"Source schema name");
-		sourceSchema.setRequired(true);
+
+		// Source object description
+		final Option sourceSchema = Option.builder("s")
+				.argName("source-schema")
+				.hasArg(true)
+				.required(false)
+				.desc("Source schema name. If not specified - value of <source-user> is used")
+				.build();
 		options.addOption(sourceSchema);
-		final Option sourceTable = new Option("t", "source-table", true,
-				"Source table name");
-		sourceTable.setRequired(true);
-		options.addOption(sourceTable);
-		final Option destSchema = new Option("S", "destination-schema", true,
-				"Destination schema name, if not specified value of --source-schema used");
-		destSchema.setRequired(false);
-		options.addOption(destSchema);
-		final Option destTable = new Option("T", "destination-table", true,
-				"Destination table name, if not specified value of --source-table used");
-		destTable.setRequired(false);
-		options.addOption(destTable);
-		final Option whereClause = new Option("w", "where-clause", true,
-				"Optional where clause for source table");
-		whereClause.setRequired(false);
+
+		final Option sourceObject = Option.builder("o")
+				.argName("source-object")
+				.hasArg(true)
+				.required(true)
+				.desc("The name of source table or view, or valid SQL SELECT statement to query data")
+				.build();
+		options.addOption(sourceObject);
+
+		final Option whereClause = Option.builder("w")
+				.argName("where-clause")
+				.hasArg(true)
+				.required(false)
+				.desc("Optional where clause for the <source-object>. Valid only when <source-object> points to table or view.")
+				.build();
 		options.addOption(whereClause);
-		final Option addRowId = new Option("r", "add-rowid-to-dest", false,
-				"When specified ROWID pseudocolumn is added to destination as VARCHAR column with name ORA_ROW_ID");
-		addRowId.setRequired(false);
+
+		final Option addRowId = Option.builder("r")
+				.argName("add-rowid-to-iceberg")
+				.hasArg(false)
+				.required(false)
+				.desc("When specified ROWID pseudocolumn is added to destination as VARCHAR column with name ORA_ROW_ID ansd used as ID. Valid only when <source-object> points to a RDBMS table")
+				.build();
 		options.addOption(addRowId);
-		final Option rowIdColumnName = new Option("n", "rowid-column-name", true,
-				"Specifies the name for the column in destination table storing the source ROWIDs. Default - " + ROWID_KEY);
-		rowIdColumnName.setRequired(false);
+
+		final Option rowIdColumnName = Option.builder("n")
+				.argName("rowid-column-name")
+				.hasArg(true)
+				.required(false)
+				.desc("Specifies the name for the column in destination table storing the source ROWIDs. Default - " + ROWID_KEY)
+				.build();
 		options.addOption(rowIdColumnName);
+
+		final Option catalogImpl = Option.builder("I")
+				.argName("iceberg-catalog-implementation")
+				.hasArg(true)
+				.required(true)
+				.desc("One of " +
+						CATALOG_IMPL_REST + "," +
+						CATALOG_IMPL_JDBC + "," +
+						CATALOG_IMPL_HADOOP + "," +
+						CATALOG_IMPL_HIVE + "," +
+						CATALOG_IMPL_NESSIE + " or full-qualified name of class extending org.apache.iceberg.view.BaseMetastoreViewCatalog.")
+				.build();
+		options.addOption(catalogImpl);
+
+		final Option catalogName = Option.builder("N")
+				.argName("iceberg-catalog-name")
+				.hasArg(true)
+				.required(true)
+				.desc("Apache Iceberg Catalog name")
+				.build();
+		options.addOption(catalogName);
+
+		final Option catalogUri = Option.builder("U")
+				.argName("iceberg-catalog-uri")
+				.hasArg(true)
+				.required(true)
+				.desc("Apache Iceberg Catalog URI")
+				.build();
+		options.addOption(catalogUri);
+
+		final Option catalogWarehouse = Option.builder("W")
+				.argName("iceberg-warehouse-location")
+				.hasArg(true)
+				.required(true)
+				.desc("Apache Iceberg warehouse location")
+				.build();
+		options.addOption(catalogWarehouse);
+
+		final Option catalogProperties = Option.builder("P")
+				.argName("iceberg-catalog-properties")
+				.hasArgs()
+				.required(false)
+				.desc("Additional properties for Apache Iceberg catalog implementation")
+				.build();
+		options.addOption(catalogProperties);
+
+		final Option icebergTable = Option.builder("T")
+				.argName("iceberg-table-name")
+				.hasArg(true)
+				.required(false)
+				.desc("Apache Iceberg table name. When not specified and <source-object> is view or table, name of <source-object> is used.")
+				.build();
+		options.addOption(icebergTable);
 
 	}
 }
