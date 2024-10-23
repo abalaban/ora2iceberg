@@ -20,12 +20,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -37,6 +32,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Namespace;
@@ -319,12 +316,42 @@ public class Ora2Iceberg {
 			} else {
 				maxFileSize = MAX_FILE_SIZE;
 			}
+
 			//TODO
 			//TODO options for partition!!!
 			//TODO
+			//final Set<String> partColumnNames;
+			final List<Triple<String, String, Integer>> partColumnNames;
+
+			if (cmd.getOptionValues("B") == null || cmd.getOptionValues("B").length == 0) {
+				partColumnNames = null;
+			} else {
+//				partColumnNames = Arrays
+//						.stream(cmd.getOptionValues("B"))
+//						.collect(Collectors.toCollection(HashSet::new));
+				partColumnNames = new ArrayList<>();
+				final String[] partParams = cmd.getOptionValues("B");
+				if (params.length % 2  == 0 ) {
+					for (int i = 0; i < partParams.length; i += 2) {
+						final String partColumnName = partParams[i];
+						String partColumnType = partParams[i + 1];
+						int partThirdParam = -1;
+						if (StringUtils.contains(partColumnType, ",")) {
+							partThirdParam = Integer.parseInt(StringUtils.substringAfterLast(partColumnType,","));
+							partColumnType = StringUtils.substringBeforeLast(partColumnType,",");
+							//TODO
+							//TODO  Check Exception for non integer Value
+							//TODO
+						}
+						partColumnNames.add(new ImmutableTriple<>(partColumnName,partColumnType,partThirdParam));
+					}
+				}
+			}
+
+
 			final StructAndDataMover sdm = new StructAndDataMover(
 					dbMetaData, sourceSchema, sourceObject, isTableOrView,
-					catalog, icebergTable, idColumnNames, cmd.getOptionValues("B"), maxFileSize);
+					catalog, icebergTable, idColumnNames, partColumnNames, maxFileSize);
 
 			sdm.loadData();
 
