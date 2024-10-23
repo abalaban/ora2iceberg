@@ -56,6 +56,10 @@ dependencies {
 	// https://mvnrepository.com/artifact/com.oracle.database.jdbc/ucp11
 	implementation("com.oracle.database.jdbc:ucp11:$oracleJdbcVersion")
 
+	def pgJdbcVersion = "42.7.4"
+	// https://mvnrepository.com/artifact/org.postgresql/postgresql
+	implementation("org.postgresql:postgresql:$pgJdbcVersion")
+
 	def lZ4Version = "1.8.0"
 	// https://mvnrepository.com/artifact/org.lz4/lz4-java
 	implementation("org.lz4:lz4-java:$lZ4Version")
