@@ -85,7 +85,7 @@ public class StructAndDataMover {
 			final TableIdentifier icebergTable,
 			final Set<String> idColumnNames,
 			//TODO
-			final String[] partitionDefs,
+			final Set<String> partitionDefs,
 			final long targetFileSize) throws SQLException {
 		connection = dbMetaData.getConnection();
 		columnsMap = new HashMap<>();
@@ -207,13 +207,22 @@ public class StructAndDataMover {
 					}
 				}
 			}
-			//TODO
-			//TODO
-			//TODO
-			final PartitionSpec spec = PartitionSpec.unpartitioned();
+
+
+			final Schema schema = pkIds.isEmpty() ? new Schema(allColumns) : new Schema(allColumns, pkIds);
+			final PartitionSpec spec;
+			if (partitionDefs != null) {
+				//TODO
+				//TODO
+				//TODO
+				spec = PartitionSpec.builderFor(schema).identity((String) partitionDefs.toArray()[0]).build();
+
+			 }  else {
+				spec = PartitionSpec.unpartitioned();
+			}
 			table = catalog.createTable(
 					icebergTable,
-					pkIds.isEmpty() ? new Schema(allColumns) : new Schema(allColumns, pkIds),
+					schema,
 					spec);
 		} else {
 			//TODO

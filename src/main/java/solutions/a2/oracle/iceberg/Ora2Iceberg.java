@@ -319,12 +319,23 @@ public class Ora2Iceberg {
 			} else {
 				maxFileSize = MAX_FILE_SIZE;
 			}
+
 			//TODO
 			//TODO options for partition!!!
 			//TODO
+			final Set<String> partColumnNames;
+			if (cmd.getOptionValues("B") == null || cmd.getOptionValues("B").length == 0) {
+				partColumnNames = null;
+			} else {
+				partColumnNames = Arrays
+						.stream(cmd.getOptionValues("B"))
+						.collect(Collectors.toCollection(HashSet::new));
+			}
+
+
 			final StructAndDataMover sdm = new StructAndDataMover(
 					dbMetaData, sourceSchema, sourceObject, isTableOrView,
-					catalog, icebergTable, idColumnNames, cmd.getOptionValues("B"), maxFileSize);
+					catalog, icebergTable, idColumnNames, partColumnNames, maxFileSize);
 
 			sdm.loadData();
 
