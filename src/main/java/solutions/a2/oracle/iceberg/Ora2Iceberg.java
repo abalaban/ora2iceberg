@@ -65,6 +65,8 @@ public class Ora2Iceberg {
 	private static final String CATALOG_IMPL_HADOOP = "HADOOP";
 	private static final String CATALOG_IMPL_HIVE = "HIVE";
 	private static final String CATALOG_IMPL_NESSIE = "NESSIE";
+	private static final String CATALOG_IMPL_GLUE = "GLUE";
+	private static final String CATALOG_IMPL_DYNAMODB = "DYNAMODB";
 	private static final Map<String, String> CATALOG_IMPL = new HashMap<>();
 	static {
 		CATALOG_IMPL.put(CATALOG_IMPL_REST, "org.apache.iceberg.rest.RESTCatalog");
@@ -72,6 +74,8 @@ public class Ora2Iceberg {
 		CATALOG_IMPL.put(CATALOG_IMPL_HADOOP, "org.apache.iceberg.hadoop.HadoopCatalog");
 		CATALOG_IMPL.put(CATALOG_IMPL_HIVE, "org.apache.iceberg.hive.HiveCatalog");
 		CATALOG_IMPL.put(CATALOG_IMPL_NESSIE, "org.apache.iceberg.nessie.NessieCatalog");
+		CATALOG_IMPL.put(CATALOG_IMPL_GLUE, "org.apache.iceberg.aws.glue.GlueCatalog");
+		CATALOG_IMPL.put(CATALOG_IMPL_DYNAMODB, "org.apache.iceberg.aws.dynamodb.DynamoDbCatalog");
 	}
 
 	public static void main(String[] argv) {
