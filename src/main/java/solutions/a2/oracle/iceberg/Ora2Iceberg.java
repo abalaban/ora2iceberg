@@ -105,6 +105,8 @@ public class Ora2Iceberg {
 		case CATALOG_IMPL_HADOOP:
 		case CATALOG_IMPL_HIVE:
 		case CATALOG_IMPL_NESSIE:
+		case CATALOG_IMPL_GLUE:
+		case CATALOG_IMPL_DYNAMODB:
 			catalogProps.put(CatalogProperties.CATALOG_IMPL,
 					CATALOG_IMPL.get(StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))));
 			break;
@@ -386,7 +388,10 @@ public class Ora2Iceberg {
 						CATALOG_IMPL_JDBC + "," +
 						CATALOG_IMPL_HADOOP + "," +
 						CATALOG_IMPL_HIVE + "," +
-						CATALOG_IMPL_NESSIE + " or full-qualified name of class extending org.apache.iceberg.BaseMetastoreCatalog.")
+						CATALOG_IMPL_NESSIE + "," +
+						CATALOG_IMPL_GLUE + "," + 
+						CATALOG_IMPL_DYNAMODB + 
+						" or full-qualified name of class extending org.apache.iceberg.BaseMetastoreCatalog.")
 				.build();
 		options.addOption(catalogImpl);
 
