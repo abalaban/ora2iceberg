@@ -260,6 +260,9 @@ public class StructAndDataMover {
 					case java.sql.Types.TIME_WITH_TIMEZONE:
 						record.setField(entry.getKey(), rs.getTimestamp(entry.getKey()));
 						break;
+					case java.sql.Types.VARCHAR:
+						record.setField(entry.getKey(), rs.getString(entry.getKey()));
+						break;
 					}
 				}
 				columnsMap.forEach((columnName, jdbcType) -> {
