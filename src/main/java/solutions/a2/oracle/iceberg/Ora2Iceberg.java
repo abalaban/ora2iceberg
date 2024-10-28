@@ -17,9 +17,11 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -77,6 +79,9 @@ public class Ora2Iceberg {
 		CATALOG_IMPL.put(CATALOG_IMPL_GLUE, "org.apache.iceberg.aws.glue.GlueCatalog");
 		CATALOG_IMPL.put(CATALOG_IMPL_DYNAMODB, "org.apache.iceberg.aws.dynamodb.DynamoDbCatalog");
 	}
+
+	private static final String DRIVER_POSTGRESQL = "org.postgresql.Driver";
+	private static final String PREFIX_POSTGRESQL = "jdbc:postgresql:";
 
 	public static void main(String[] argv) {
 		LOGGER.info("Starting...");
@@ -139,6 +144,14 @@ public class Ora2Iceberg {
 				LOGGER.error("Unable to parse from command line values of Apache Iceberg Catalog properties!\n" +
 						"Please check parameters!");
 				System.exit(1);
+			}
+		}
+		if (StringUtils.equals(CATALOG_IMPL_JDBC, StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))) &&
+				StringUtils.startsWith(catalogProps.get(CatalogProperties.URI), PREFIX_POSTGRESQL)) {
+			if (!isDriverLoaded(DRIVER_POSTGRESQL)) {
+				try {
+					Class.forName(DRIVER_POSTGRESQL);
+				} catch (ClassNotFoundException cnf) { }
 			}
 		}
 		BaseMetastoreCatalog catalog = null;
@@ -470,4 +483,16 @@ public class Ora2Iceberg {
 		//TODO option for column datatype remap, especially NUMBER to INT/LONG !!!
 		//TODO
 	}
+
+	private static boolean isDriverLoaded(final String driverClass) {
+		final Enumeration<Driver> availableDrivers = DriverManager.getDrivers();
+		while (availableDrivers.hasMoreElements()) {
+			final Driver driver = availableDrivers.nextElement();
+			if (StringUtils.equals(driverClass, driver.getClass().getCanonicalName())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 }
