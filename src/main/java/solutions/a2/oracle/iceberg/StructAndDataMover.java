@@ -20,6 +20,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -258,7 +259,12 @@ public class StructAndDataMover {
 						break;
 					case java.sql.Types.TIMESTAMP:
 					case java.sql.Types.TIME_WITH_TIMEZONE:
-						record.setField(entry.getKey(), rs.getTimestamp(entry.getKey()));
+						final Timestamp ts =  rs.getTimestamp(entry.getKey());
+						if (ts != null) {
+							record.setField(entry.getKey(), ts.toLocalDateTime());
+						} else {
+							record.setField(entry.getKey(), null);
+						}
 						break;
 					case java.sql.Types.VARCHAR:
 						record.setField(entry.getKey(), rs.getString(entry.getKey()));
