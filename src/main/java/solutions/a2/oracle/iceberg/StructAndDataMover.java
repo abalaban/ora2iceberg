@@ -295,13 +295,22 @@ public class StructAndDataMover {
 										//TODO
 										//TODO - key values in output!!!
 										//TODO
+										final StringBuilder oraNumFmt = new StringBuilder();
+										final byte[] oraNumBytes = oraNum.getBytes();
+										for (int i = 0; i < oraNumBytes.length; i++) {
+											oraNumFmt
+												.append(' ')
+												.append(String.format("%02x", Byte.toUnsignedInt(oraNumBytes[i])));
+										}
 										LOGGER.warn(
 												"\n=====================\n" +
 												"Precision {} of Oracle NUMBER column {} with value '{}' is greater than allowed precision {}!\n" +
-												" Setting value to {}!" +
+												"Dump value of NUMBER column ='{}'" +
+												"Setting value to {}!" +
 												"\n=====================\n",
 												bd.precision(), entry.getKey(),
-												oraNum.stringValue(), entry.getValue()[PRECISION_POS],												
+												oraNum.stringValue(), entry.getValue()[PRECISION_POS],
+												oraNumFmt.toString(),
 												entry.getValue()[NULL_POS] == 1 ? "NULL" : "" + Float.MAX_VALUE);
 										if (entry.getValue()[NULL_POS] == 1) {
 											record.setField(entry.getKey(), null);
