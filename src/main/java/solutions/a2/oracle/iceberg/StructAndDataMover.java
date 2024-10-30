@@ -305,7 +305,7 @@ public class StructAndDataMover {
 										LOGGER.warn(
 												"\n=====================\n" +
 												"Precision {} of Oracle NUMBER column {} with value '{}' is greater than allowed precision {}!\n" +
-												"Dump value of NUMBER column ='{}'" +
+												"Dump value of NUMBER column ='{}'\n" +
 												"Setting value to {}!" +
 												"\n=====================\n",
 												bd.precision(), entry.getKey(),
