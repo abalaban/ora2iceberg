@@ -259,25 +259,29 @@ public class StructAndDataMover {
 						break;
 					case java.sql.Types.NUMERIC:
 						final NUMBER oraNum = rs.getNUMBER(entry.getKey());
-						if (oraNum.isInf() || oraNum.isNegInf()) {
-							LOGGER.warn(
-									"\n=====================\n" +
-									"Value of Oracle NUMBER column {} is {}! Setting value to {}!" +
-									"\n=====================\n",
-									entry.getKey(),
-									oraNum.isInf() ? "Infinity" : "Negative infinity",
-									entry.getValue()[NULL_POS] == 1 ? "NULL" :
-										oraNum.isInf() ? "" + Float.MAX_VALUE : "" + Float.MIN_VALUE);
-							if (entry.getValue()[NULL_POS] == 1) {
-								record.setField(entry.getKey(), null);
-							} else if (oraNum.isInf()) {
-								record.setField(entry.getKey(), BigDecimal.valueOf(Float.MAX_VALUE).setScale(entry.getValue()[SCALE_POS]));
-							} else {
-								record.setField(entry.getKey(), BigDecimal.valueOf(Float.MIN_VALUE).setScale(entry.getValue()[SCALE_POS]));
-							}
+						if (oraNum == null) {
+							record.setField(entry.getKey(), null);
 						} else {
-							record.setField(entry.getKey(), oraNum.isNull() ?
-									null : oraNum.bigDecimalValue().setScale(entry.getValue()[SCALE_POS]));
+							if (oraNum.isInf() || oraNum.isNegInf()) {
+								LOGGER.warn(
+										"\n=====================\n" +
+										"Value of Oracle NUMBER column {} is {}! Setting value to {}!" +
+										"\n=====================\n",
+										entry.getKey(),
+										oraNum.isInf() ? "Infinity" : "Negative infinity",
+										entry.getValue()[NULL_POS] == 1 ? "NULL" :
+											oraNum.isInf() ? "" + Float.MAX_VALUE : "" + Float.MIN_VALUE);
+								if (entry.getValue()[NULL_POS] == 1) {
+									record.setField(entry.getKey(), null);
+								} else if (oraNum.isInf()) {
+									record.setField(entry.getKey(), BigDecimal.valueOf(Float.MAX_VALUE).setScale(entry.getValue()[SCALE_POS]));
+								} else {
+									record.setField(entry.getKey(), BigDecimal.valueOf(Float.MIN_VALUE).setScale(entry.getValue()[SCALE_POS]));
+								}
+							} else {
+								record.setField(entry.getKey(), oraNum.isNull() ?
+										null : oraNum.bigDecimalValue().setScale(entry.getValue()[SCALE_POS]));
+							}
 						}
 						break;
 					case java.sql.Types.FLOAT:
