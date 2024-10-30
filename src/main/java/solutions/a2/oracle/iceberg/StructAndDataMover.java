@@ -61,9 +61,10 @@ public class StructAndDataMover {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(StructAndDataMover.class);
 	private static final int TYPE_POS = 0;
-	private static final int SCALE_POS = 1;
-	private static final int NULL_POS = 2;
-	private static final int INFO_SIZE = 3;
+	private static final int PRECISION_POS = 1;
+	private static final int SCALE_POS = 2;
+	private static final int NULL_POS = 3;
+	private static final int INFO_SIZE = 4;
 
 	private final Connection connection;
 	private final boolean isTableOrView;
@@ -182,6 +183,10 @@ public class StructAndDataMover {
 				if (addColumn) {
 					final int[] typeAndScale = new int[INFO_SIZE];
 					typeAndScale[TYPE_POS] = mappedType;
+					//TODO - precision!
+					typeAndScale[PRECISION_POS] = mappedType != java.sql.Types.NUMERIC ? Integer.MIN_VALUE :
+						precision <= 0 ? 38 : precision;
+					//TODO - scale!
 					typeAndScale[SCALE_POS] = mappedType != java.sql.Types.NUMERIC ? Integer.MIN_VALUE :
 						scale < 0 ? 19: scale;
 					typeAndScale[NULL_POS] = nullable ? 1 : 0;
@@ -263,6 +268,9 @@ public class StructAndDataMover {
 							record.setField(entry.getKey(), null);
 						} else {
 							if (oraNum.isInf() || oraNum.isNegInf()) {
+								//TODO
+								//TODO - key values in output!!!
+								//TODO
 								LOGGER.warn(
 										"\n=====================\n" +
 										"Value of Oracle NUMBER column {} is {}! Setting value to {}!" +
@@ -279,8 +287,31 @@ public class StructAndDataMover {
 									record.setField(entry.getKey(), BigDecimal.valueOf(Float.MIN_VALUE).setScale(entry.getValue()[SCALE_POS]));
 								}
 							} else {
-								record.setField(entry.getKey(), oraNum.isNull() ?
-										null : oraNum.bigDecimalValue().setScale(entry.getValue()[SCALE_POS]));
+								if (oraNum.isNull()) {
+									record.setField(entry.getKey(), null);
+								} else {
+									final BigDecimal bd = oraNum.bigDecimalValue();
+									if (bd.precision() > entry.getValue()[PRECISION_POS]) {
+										//TODO
+										//TODO - key values in output!!!
+										//TODO
+										LOGGER.warn(
+												"\n=====================\n" +
+												"Precision {} of Oracle NUMBER column {} with value '{}' is greater than allowed precision {}!\n" +
+												" Setting value to {}!" +
+												"\n=====================\n",
+												bd.precision(), entry.getKey(),
+												oraNum.stringValue(), entry.getValue()[PRECISION_POS],												
+												entry.getValue()[NULL_POS] == 1 ? "NULL" : "" + Float.MAX_VALUE);
+										if (entry.getValue()[NULL_POS] == 1) {
+											record.setField(entry.getKey(), null);
+										} else {
+											record.setField(entry.getKey(), BigDecimal.valueOf(Float.MAX_VALUE).setScale(entry.getValue()[SCALE_POS]));
+										}
+									} else {
+										record.setField(entry.getKey(), bd.setScale(entry.getValue()[SCALE_POS]));
+									}
+								}
 							}
 						}
 						break;
