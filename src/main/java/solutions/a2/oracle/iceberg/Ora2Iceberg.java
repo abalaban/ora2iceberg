@@ -268,13 +268,23 @@ public class Ora2Iceberg {
 				icebergTableName = cmd.getOptionValue("iceberg-table-name");
 			}
 
-			final Namespace namespace;
-			if (StringUtils.isBlank(cmd.getOptionValue("iceberg-namespace"))) {
-				namespace = Namespace.of(sourceSchema);
-			} else {
-				namespace = Namespace.of(cmd.getOptionValue("iceberg-namespace"));
+			final TableIdentifier icebergTable;
+			switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))) {
+			case CATALOG_IMPL_NESSIE:
+				// Nessie namespaces are implicit and do not need to be explicitly created or deleted.
+				// The create and delete namespace methods are no-ops for the NessieCatalog.
+				icebergTable = TableIdentifier.of(icebergTableName);
+				break;
+			default:
+				final Namespace namespace;
+				if (StringUtils.isBlank(cmd.getOptionValue("iceberg-namespace"))) {
+					namespace = Namespace.of(sourceSchema);
+				} else {
+					namespace = Namespace.of(cmd.getOptionValue("iceberg-namespace"));
+				}
+				icebergTable = TableIdentifier.of(namespace, icebergTableName);
+				break;
 			}
-			final TableIdentifier icebergTable = TableIdentifier.of(namespace, icebergTableName);
 
 			if (catalog.tableExists(icebergTable)) {
 				//TODO
