@@ -49,7 +49,9 @@ import org.apache.iceberg.PartitionKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import oracle.jdbc.OracleResultSet;
 import oracle.jdbc.OracleTypes;
+import oracle.sql.NUMBER;
 
 /**
  * 
@@ -58,14 +60,19 @@ import oracle.jdbc.OracleTypes;
 public class StructAndDataMover {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(StructAndDataMover.class);
+	private static final int TYPE_POS = 0;
+	private static final int SCALE_POS = 1;
+	private static final int NULL_POS = 2;
+	private static final int INFO_SIZE = 3;
 
-	final Connection connection;
-	final boolean isTableOrView;
-	final String sourceSchema;
-	final String sourceObject;
-	final Map<String, int[]> columnsMap;
-	final Table table;
-	final long targetFileSize;
+	private final Connection connection;
+	private final boolean isTableOrView;
+	private final String sourceSchema;
+	private final String sourceObject;
+	private final Map<String, int[]> columnsMap;
+	private final Table table;
+	private final long targetFileSize;
+	
 
 	StructAndDataMover(
 			final DatabaseMetaData dbMetaData,
@@ -133,6 +140,8 @@ public class StructAndDataMover {
 					} else {
 						mappedType = java.sql.Types.NUMERIC;
 						//TODO
+						//TODO
+						//TODO
 						type = Types.DecimalType.of(
 								precision <= 0 ? 38 : precision,
 								scale < 0 ? 19: scale);
@@ -171,10 +180,11 @@ public class StructAndDataMover {
 					LOGGER.warn("Skipping column {} with jdbcType {}", columnName, jdbcType);
 				}
 				if (addColumn) {
-					final int[] typeAndScale = new int[2];
-					typeAndScale[0] = mappedType;
-					typeAndScale[1] = mappedType != java.sql.Types.NUMERIC ? Integer.MIN_VALUE :
+					final int[] typeAndScale = new int[INFO_SIZE];
+					typeAndScale[TYPE_POS] = mappedType;
+					typeAndScale[SCALE_POS] = mappedType != java.sql.Types.NUMERIC ? Integer.MIN_VALUE :
 						scale < 0 ? 19: scale;
+					typeAndScale[NULL_POS] = nullable ? 1 : 0;
 					columnsMap.put(columnName, typeAndScale);
 					columnId++;
 					if (nullable) {
@@ -231,13 +241,13 @@ public class StructAndDataMover {
 
 			//TODO - where clause!!!
 			final PreparedStatement ps = connection.prepareStatement("select * from \"" + sourceSchema + "\".\"" + sourceObject + "\"");
-			final ResultSet rs = ps.executeQuery();
+			final OracleResultSet rs = (OracleResultSet) ps.executeQuery();
 			//TODO - run statistic!
 			//TODO - progress on screen!!!
 			while (rs.next()) {
 				final GenericRecord record = GenericRecord.create(table.schema());
 				for (final Map.Entry<String, int[]> entry : columnsMap.entrySet()) {
-					switch (entry.getValue()[0]) {
+					switch (entry.getValue()[TYPE_POS]) {
 					case java.sql.Types.BOOLEAN:
 						record.setField(entry.getKey(), rs.getBoolean(entry.getKey()));
 						break;
@@ -248,8 +258,27 @@ public class StructAndDataMover {
 						record.setField(entry.getKey(), rs.getLong(entry.getKey()));
 						break;
 					case java.sql.Types.NUMERIC:
-						BigDecimal bd = rs.getBigDecimal(entry.getKey());
-						record.setField(entry.getKey(), bd != null ? bd.setScale(entry.getValue()[1]) : null);
+						final NUMBER oraNum = rs.getNUMBER(entry.getKey());
+						if (oraNum.isInf() || oraNum.isNegInf()) {
+							LOGGER.warn(
+									"\n=====================\n" +
+									"Value of Oracle NUMBER column {} is {}! Setting value to {}!" +
+									"\n=====================\n",
+									entry.getKey(),
+									oraNum.isInf() ? "Infinity" : "Negative infinity",
+									entry.getValue()[NULL_POS] == 1 ? "NULL" :
+										oraNum.isInf() ? "" + Float.MAX_VALUE : "" + Float.MIN_VALUE);
+							if (entry.getValue()[NULL_POS] == 1) {
+								record.setField(entry.getKey(), null);
+							} else if (oraNum.isInf()) {
+								record.setField(entry.getKey(), BigDecimal.valueOf(Float.MAX_VALUE).setScale(entry.getValue()[SCALE_POS]));
+							} else {
+								record.setField(entry.getKey(), BigDecimal.valueOf(Float.MIN_VALUE).setScale(entry.getValue()[SCALE_POS]));
+							}
+						} else {
+							record.setField(entry.getKey(), oraNum.isNull() ?
+									null : oraNum.bigDecimalValue().setScale(entry.getValue()[SCALE_POS]));
+						}
 						break;
 					case java.sql.Types.FLOAT:
 						record.setField(entry.getKey(), rs.getFloat(entry.getKey()));
