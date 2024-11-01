@@ -206,7 +206,7 @@ dependencies {
 	// https://mvnrepository.com/artifact/software.amazon.awssdk/glue
 	implementation("software.amazon.awssdk:glue:$awsVersion")
 
-	def jUnitVersion = "5.10.3"
+	def jUnitVersion = "5.11.3"
 	// https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api
 	testImplementation("org.junit.jupiter:junit-jupiter-api:$jUnitVersion")
 	// https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-engine
