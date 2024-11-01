@@ -104,7 +104,7 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.apache.parquet/parquet-avro
 	implementation("org.apache.parquet:parquet-avro:$parquetVersion")
 
-	def hadoopVersion = "3.4.0"
+	def hadoopVersion = "3.4.1"
 	// https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-mapreduce-client-core
 	implementation("org.apache.hadoop:hadoop-mapreduce-client-core:$hadoopVersion") {
 		exclude group: 'ch.qos.reload4j'
