@@ -194,6 +194,18 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.projectnessie.nessie/nessie-client
 	implementation("org.projectnessie.nessie:nessie-client:$nessieVersion")
 
+	def awsVersion = "2.29.3"
+	// https://mvnrepository.com/artifact/software.amazon.awssdk/auth
+	implementation("software.amazon.awssdk:auth:$awsVersion")
+	// https://mvnrepository.com/artifact/software.amazon.awssdk/sts
+	implementation("software.amazon.awssdk:sts:$awsVersion")
+	// https://mvnrepository.com/artifact/software.amazon.awssdk/s3
+	implementation("software.amazon.awssdk:s3:$awsVersion")
+	// https://mvnrepository.com/artifact/software.amazon.awssdk/dynamodb
+	implementation("software.amazon.awssdk:dynamodb:$awsVersion")
+	// https://mvnrepository.com/artifact/software.amazon.awssdk/glue
+	implementation("software.amazon.awssdk:glue:$awsVersion")
+
 	def jUnitVersion = "5.10.3"
 	// https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api
 	testImplementation("org.junit.jupiter:junit-jupiter-api:$jUnitVersion")
