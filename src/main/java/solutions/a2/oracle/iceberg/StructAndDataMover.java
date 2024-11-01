@@ -15,6 +15,7 @@ package solutions.a2.oracle.iceberg;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -290,7 +291,9 @@ public class StructAndDataMover {
 								if (oraNum.isNull()) {
 									record.setField(entry.getKey(), null);
 								} else {
-									final BigDecimal bd = oraNum.bigDecimalValue().setScale(entry.getValue()[SCALE_POS]);
+									final BigDecimal bd = oraNum
+												.bigDecimalValue()
+												.setScale(entry.getValue()[SCALE_POS], RoundingMode.HALF_UP);
 									if (bd.precision() > entry.getValue()[PRECISION_POS]) {
 										//TODO
 										//TODO - key values in output!!!
