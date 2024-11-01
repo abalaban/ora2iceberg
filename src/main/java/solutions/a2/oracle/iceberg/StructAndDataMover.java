@@ -290,7 +290,7 @@ public class StructAndDataMover {
 								if (oraNum.isNull()) {
 									record.setField(entry.getKey(), null);
 								} else {
-									final BigDecimal bd = oraNum.bigDecimalValue();
+									final BigDecimal bd = oraNum.bigDecimalValue().setScale(entry.getValue()[SCALE_POS]);
 									if (bd.precision() > entry.getValue()[PRECISION_POS]) {
 										//TODO
 										//TODO - key values in output!!!
@@ -315,10 +315,11 @@ public class StructAndDataMover {
 										if (entry.getValue()[NULL_POS] == 1) {
 											record.setField(entry.getKey(), null);
 										} else {
+											//TODO - approximation required, not MAX_VALUE!
 											record.setField(entry.getKey(), BigDecimal.valueOf(Float.MAX_VALUE).setScale(entry.getValue()[SCALE_POS]));
 										}
 									} else {
-										record.setField(entry.getKey(), bd.setScale(entry.getValue()[SCALE_POS]));
+										record.setField(entry.getKey(), bd);
 									}
 								}
 							}
