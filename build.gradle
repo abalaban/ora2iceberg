@@ -182,7 +182,7 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-aws
 	implementation("org.apache.iceberg:iceberg-aws:$icebergVersion")
  
-	def jacksonVersion = "2.18.0"
+	def jacksonVersion = "2.18.1"
 	// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core
 	implementation("com.fasterxml.jackson.core:jackson-core:$jacksonVersion")
 	// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations
