@@ -226,6 +226,7 @@ shadowJar {
 	manifest {
 		attributes "Main-Class": "solutions.a2.oracle.iceberg.Ora2Iceberg"
 	}
+	zip64 true
 }
 
 test {
