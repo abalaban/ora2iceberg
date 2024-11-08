@@ -56,7 +56,7 @@ import oracle.jdbc.OracleTypes;
 import oracle.sql.NUMBER;
 
 /**
- * 
+ *
  * @author <a href="mailto:averemee@a2.solutions">Aleksei Veremeev</a>
  */
 public class StructAndDataMover {
@@ -75,7 +75,7 @@ public class StructAndDataMover {
 	private final Map<String, int[]> columnsMap;
 	private final Table table;
 	private final long targetFileSize;
-	
+
 
 	StructAndDataMover(
 			final DatabaseMetaData dbMetaData,
@@ -86,6 +86,7 @@ public class StructAndDataMover {
 			final TableIdentifier icebergTable,
 			final Set<String> idColumnNames,
 			//TODO
+			//final Set<String> partitionDefs,
 			final List<Triple<String, String, Integer>>  partitionDefs,
 			final long targetFileSize) throws SQLException {
 		connection = dbMetaData.getConnection();
@@ -105,8 +106,8 @@ public class StructAndDataMover {
 			} else {
 				LOGGER.error(
 						"\n=====================\n" +
-						"Unable to access {}.{} !" +
-						"\n=====================\n",
+								"Unable to access {}.{} !" +
+								"\n=====================\n",
 						sourceSchema, sourceObject);
 				throw new SQLException();
 			}
@@ -122,75 +123,75 @@ public class StructAndDataMover {
 				final String columnName = columns.getString("COLUMN_NAME");
 				final int jdbcType = columns.getInt("DATA_TYPE");
 				final boolean nullable = StringUtils.equals("YES", columns.getString("IS_NULLABLE"));
-				final int precision = columns.getInt("COLUMN_SIZE"); 
+				final int precision = columns.getInt("COLUMN_SIZE");
 				final int scale = columns.getInt("DECIMAL_DIGITS");
 				boolean addColumn = false;
 				final Type type;
 				final int mappedType;
 				switch (jdbcType) {
-				case java.sql.Types.BOOLEAN:
-					type = Types.BooleanType.get();
-					mappedType = java.sql.Types.BOOLEAN;
-					addColumn = true;
-					break;
-				case java.sql.Types.NUMERIC:
-					if (scale == 0 && precision < 10) {
-						mappedType = java.sql.Types.INTEGER;
-						type = Types.IntegerType.get();
-					} else if (scale == 0 && precision < 19) {
-						mappedType = java.sql.Types.BIGINT;
-						type = Types.LongType.get();
-					} else {
-						mappedType = java.sql.Types.NUMERIC;
-						//TODO
-						//TODO
-						//TODO
-						type = Types.DecimalType.of(
-								precision <= 0 ? 38 : precision,
-								scale < 0 ? 19: scale);
-					}
-					addColumn = true;
-					break;
-				case OracleTypes.BINARY_FLOAT:
-					mappedType = java.sql.Types.FLOAT;
-					type = Types.FloatType.get();
-					addColumn = true;
-					break;
-				case OracleTypes.BINARY_DOUBLE:
-					mappedType = java.sql.Types.DOUBLE;
-					type = Types.DoubleType.get();
-					addColumn = true;
-					break;
-				case java.sql.Types.VARCHAR:
-					mappedType = java.sql.Types.VARCHAR;
-					type = Types.StringType.get();
-					addColumn = true;
-					break;
-				case java.sql.Types.TIMESTAMP:
-					mappedType = java.sql.Types.TIMESTAMP;
-					type = Types.TimestampType.withoutZone();
-					addColumn = true;
-					break;
-				case OracleTypes.TIMESTAMPLTZ:
-				case OracleTypes.TIMESTAMPTZ:
-					mappedType = java.sql.Types.TIMESTAMP_WITH_TIMEZONE;
-					type = Types.TimestampType.withZone();
-					addColumn = true;
-					break;
-				default:
-					mappedType = Integer.MAX_VALUE;
-					type = null;
-					LOGGER.warn("Skipping column {} with jdbcType {}", columnName, jdbcType);
+					case java.sql.Types.BOOLEAN:
+						type = Types.BooleanType.get();
+						mappedType = java.sql.Types.BOOLEAN;
+						addColumn = true;
+						break;
+					case java.sql.Types.NUMERIC:
+						if (scale == 0 && precision < 10) {
+							mappedType = java.sql.Types.INTEGER;
+							type = Types.IntegerType.get();
+						} else if (scale == 0 && precision < 19) {
+							mappedType = java.sql.Types.BIGINT;
+							type = Types.LongType.get();
+						} else {
+							mappedType = java.sql.Types.NUMERIC;
+							//TODO
+							//TODO
+							//TODO
+							type = Types.DecimalType.of(
+									precision <= 0 ? 38 : precision,
+									scale < 0 ? 19: scale);
+						}
+						addColumn = true;
+						break;
+					case OracleTypes.BINARY_FLOAT:
+						mappedType = java.sql.Types.FLOAT;
+						type = Types.FloatType.get();
+						addColumn = true;
+						break;
+					case OracleTypes.BINARY_DOUBLE:
+						mappedType = java.sql.Types.DOUBLE;
+						type = Types.DoubleType.get();
+						addColumn = true;
+						break;
+					case java.sql.Types.VARCHAR:
+						mappedType = java.sql.Types.VARCHAR;
+						type = Types.StringType.get();
+						addColumn = true;
+						break;
+					case java.sql.Types.TIMESTAMP:
+						mappedType = java.sql.Types.TIMESTAMP;
+						type = Types.TimestampType.withoutZone();
+						addColumn = true;
+						break;
+					case OracleTypes.TIMESTAMPLTZ:
+					case OracleTypes.TIMESTAMPTZ:
+						mappedType = java.sql.Types.TIMESTAMP_WITH_TIMEZONE;
+						type = Types.TimestampType.withZone();
+						addColumn = true;
+						break;
+					default:
+						mappedType = Integer.MAX_VALUE;
+						type = null;
+						LOGGER.warn("Skipping column {} with jdbcType {}", columnName, jdbcType);
 				}
 				if (addColumn) {
 					final int[] typeAndScale = new int[INFO_SIZE];
 					typeAndScale[TYPE_POS] = mappedType;
 					//TODO - precision!
 					typeAndScale[PRECISION_POS] = mappedType != java.sql.Types.NUMERIC ? Integer.MIN_VALUE :
-						precision <= 0 ? 38 : precision;
+							precision <= 0 ? 38 : precision;
 					//TODO - scale!
 					typeAndScale[SCALE_POS] = mappedType != java.sql.Types.NUMERIC ? Integer.MIN_VALUE :
-						scale < 0 ? 19: scale;
+							scale < 0 ? 19: scale;
 					typeAndScale[NULL_POS] = nullable ? 1 : 0;
 					columnsMap.put(columnName, typeAndScale);
 					columnId++;
@@ -209,12 +210,12 @@ public class StructAndDataMover {
 				}
 			}
 
+
 			final Schema schema = pkIds.isEmpty() ? new Schema(allColumns) : new Schema(allColumns, pkIds);
 			final PartitionSpec spec;
 			if (partitionDefs != null) {
-				//TODO
-				//TODO  Uppercase Paremeters, Check dependecies etc
-				//TODO
+
+				//spec = PartitionSpec.builderFor(schema).identity((String) partitionDefs.toArray()[0]).build();
 				PartitionSpec.Builder specBuilder = PartitionSpec.builderFor(schema);
 				for (Triple<String, String, Integer> partitionDef : partitionDefs) {
 					switch (partitionDef.getMiddle()) {
@@ -240,15 +241,18 @@ public class StructAndDataMover {
 							specBuilder = specBuilder.truncate(partitionDef.getLeft(), partitionDef.getRight());
 							break;
 
-							//TODO Create Else with exception -
+						//TODO Create Else with exception - if partition type does not exist
 					}
 
 				}
 
 				spec = specBuilder.build();
 
-			 } else {
 
+
+
+
+			}  else {
 				spec = PartitionSpec.unpartitioned();
 			}
 			table = catalog.createTable(
@@ -273,11 +277,11 @@ public class StructAndDataMover {
 		if (isTableOrView) {
 
 			PartitionedFanoutWriter<Record> partitionedFanoutWriter = new PartitionedFanoutWriter<Record>(
-																			table.spec(),
-																			//TODO - only parquet?
-																			FileFormat.PARQUET,
-																			af, off, table.io(),
-																			targetFileSize) {
+					table.spec(),
+					//TODO - only parquet?
+					FileFormat.PARQUET,
+					af, off, table.io(),
+					targetFileSize) {
 				@Override
 				protected PartitionKey partition(Record record) {
 					partitionKey.partition(record);
@@ -294,98 +298,98 @@ public class StructAndDataMover {
 				final GenericRecord record = GenericRecord.create(table.schema());
 				for (final Map.Entry<String, int[]> entry : columnsMap.entrySet()) {
 					switch (entry.getValue()[TYPE_POS]) {
-					case java.sql.Types.BOOLEAN:
-						record.setField(entry.getKey(), rs.getBoolean(entry.getKey()));
-						break;
-					case java.sql.Types.INTEGER:
-						record.setField(entry.getKey(), rs.getInt(entry.getKey()));
-						break;
-					case java.sql.Types.BIGINT:
-						record.setField(entry.getKey(), rs.getLong(entry.getKey()));
-						break;
-					case java.sql.Types.NUMERIC:
-						final NUMBER oraNum = rs.getNUMBER(entry.getKey());
-						if (oraNum == null) {
-							record.setField(entry.getKey(), null);
-						} else {
-							if (oraNum.isInf() || oraNum.isNegInf()) {
-								//TODO
-								//TODO - key values in output!!!
-								//TODO
-								LOGGER.warn(
-										"\n=====================\n" +
-										"Value of Oracle NUMBER column {} is {}! Setting value to {}!" +
-										"\n=====================\n",
-										entry.getKey(),
-										oraNum.isInf() ? "Infinity" : "Negative infinity",
-										entry.getValue()[NULL_POS] == 1 ? "NULL" :
-											oraNum.isInf() ? "" + Float.MAX_VALUE : "" + Float.MIN_VALUE);
-								if (entry.getValue()[NULL_POS] == 1) {
-									record.setField(entry.getKey(), null);
-								} else if (oraNum.isInf()) {
-									record.setField(entry.getKey(), BigDecimal.valueOf(Float.MAX_VALUE).setScale(entry.getValue()[SCALE_POS]));
-								} else {
-									record.setField(entry.getKey(), BigDecimal.valueOf(Float.MIN_VALUE).setScale(entry.getValue()[SCALE_POS]));
-								}
+						case java.sql.Types.BOOLEAN:
+							record.setField(entry.getKey(), rs.getBoolean(entry.getKey()));
+							break;
+						case java.sql.Types.INTEGER:
+							record.setField(entry.getKey(), rs.getInt(entry.getKey()));
+							break;
+						case java.sql.Types.BIGINT:
+							record.setField(entry.getKey(), rs.getLong(entry.getKey()));
+							break;
+						case java.sql.Types.NUMERIC:
+							final NUMBER oraNum = rs.getNUMBER(entry.getKey());
+							if (oraNum == null) {
+								record.setField(entry.getKey(), null);
 							} else {
-								if (oraNum.isNull()) {
-									record.setField(entry.getKey(), null);
+								if (oraNum.isInf() || oraNum.isNegInf()) {
+									//TODO
+									//TODO - key values in output!!!
+									//TODO
+									LOGGER.warn(
+											"\n=====================\n" +
+													"Value of Oracle NUMBER column {} is {}! Setting value to {}!" +
+													"\n=====================\n",
+											entry.getKey(),
+											oraNum.isInf() ? "Infinity" : "Negative infinity",
+											entry.getValue()[NULL_POS] == 1 ? "NULL" :
+													oraNum.isInf() ? "" + Float.MAX_VALUE : "" + Float.MIN_VALUE);
+									if (entry.getValue()[NULL_POS] == 1) {
+										record.setField(entry.getKey(), null);
+									} else if (oraNum.isInf()) {
+										record.setField(entry.getKey(), BigDecimal.valueOf(Float.MAX_VALUE).setScale(entry.getValue()[SCALE_POS]));
+									} else {
+										record.setField(entry.getKey(), BigDecimal.valueOf(Float.MIN_VALUE).setScale(entry.getValue()[SCALE_POS]));
+									}
 								} else {
-									final BigDecimal bd = oraNum
+									if (oraNum.isNull()) {
+										record.setField(entry.getKey(), null);
+									} else {
+										final BigDecimal bd = oraNum
 												.bigDecimalValue()
 												.setScale(entry.getValue()[SCALE_POS], RoundingMode.HALF_UP);
-									if (bd.precision() > entry.getValue()[PRECISION_POS]) {
-										//TODO
-										//TODO - key values in output!!!
-										//TODO
-										final StringBuilder oraNumFmt = new StringBuilder();
-										final byte[] oraNumBytes = oraNum.getBytes();
-										for (int i = 0; i < oraNumBytes.length; i++) {
-											oraNumFmt
-												.append(' ')
-												.append(String.format("%02x", Byte.toUnsignedInt(oraNumBytes[i])));
-										}
-										LOGGER.warn(
-												"\n=====================\n" +
-												"Precision {} of Oracle NUMBER column {} with value '{}' is greater than allowed precision {}!\n" +
-												"Dump value of NUMBER column ='{}'\n" +
-												"Setting value to {}!" +
-												"\n=====================\n",
-												bd.precision(), entry.getKey(),
-												oraNum.stringValue(), entry.getValue()[PRECISION_POS],
-												oraNumFmt.toString(),
-												entry.getValue()[NULL_POS] == 1 ? "NULL" : "" + Float.MAX_VALUE);
-										if (entry.getValue()[NULL_POS] == 1) {
-											record.setField(entry.getKey(), null);
+										if (bd.precision() > entry.getValue()[PRECISION_POS]) {
+											//TODO
+											//TODO - key values in output!!!
+											//TODO
+											final StringBuilder oraNumFmt = new StringBuilder();
+											final byte[] oraNumBytes = oraNum.getBytes();
+											for (int i = 0; i < oraNumBytes.length; i++) {
+												oraNumFmt
+														.append(' ')
+														.append(String.format("%02x", Byte.toUnsignedInt(oraNumBytes[i])));
+											}
+											LOGGER.warn(
+													"\n=====================\n" +
+															"Precision {} of Oracle NUMBER column {} with value '{}' is greater than allowed precision {}!\n" +
+															"Dump value of NUMBER column ='{}'\n" +
+															"Setting value to {}!" +
+															"\n=====================\n",
+													bd.precision(), entry.getKey(),
+													oraNum.stringValue(), entry.getValue()[PRECISION_POS],
+													oraNumFmt.toString(),
+													entry.getValue()[NULL_POS] == 1 ? "NULL" : "" + Float.MAX_VALUE);
+											if (entry.getValue()[NULL_POS] == 1) {
+												record.setField(entry.getKey(), null);
+											} else {
+												//TODO - approximation required, not MAX_VALUE!
+												record.setField(entry.getKey(), BigDecimal.valueOf(Float.MAX_VALUE).setScale(entry.getValue()[SCALE_POS]));
+											}
 										} else {
-											//TODO - approximation required, not MAX_VALUE!
-											record.setField(entry.getKey(), BigDecimal.valueOf(Float.MAX_VALUE).setScale(entry.getValue()[SCALE_POS]));
+											record.setField(entry.getKey(), bd);
 										}
-									} else {
-										record.setField(entry.getKey(), bd);
 									}
 								}
 							}
-						}
-						break;
-					case java.sql.Types.FLOAT:
-						record.setField(entry.getKey(), rs.getFloat(entry.getKey()));
-						break;
-					case java.sql.Types.DOUBLE:
-						record.setField(entry.getKey(), rs.getDouble(entry.getKey()));
-						break;
-					case java.sql.Types.TIMESTAMP:
-					case java.sql.Types.TIME_WITH_TIMEZONE:
-						final Timestamp ts =  rs.getTimestamp(entry.getKey());
-						if (ts != null) {
-							record.setField(entry.getKey(), ts.toLocalDateTime());
-						} else {
-							record.setField(entry.getKey(), null);
-						}
-						break;
-					case java.sql.Types.VARCHAR:
-						record.setField(entry.getKey(), rs.getString(entry.getKey()));
-						break;
+							break;
+						case java.sql.Types.FLOAT:
+							record.setField(entry.getKey(), rs.getFloat(entry.getKey()));
+							break;
+						case java.sql.Types.DOUBLE:
+							record.setField(entry.getKey(), rs.getDouble(entry.getKey()));
+							break;
+						case java.sql.Types.TIMESTAMP:
+						case java.sql.Types.TIME_WITH_TIMEZONE:
+							final Timestamp ts =  rs.getTimestamp(entry.getKey());
+							if (ts != null) {
+								record.setField(entry.getKey(), ts.toLocalDateTime());
+							} else {
+								record.setField(entry.getKey(), null);
+							}
+							break;
+						case java.sql.Types.VARCHAR:
+							record.setField(entry.getKey(), rs.getString(entry.getKey()));
+							break;
 					}
 				}
 				columnsMap.forEach((columnName, jdbcType) -> {
