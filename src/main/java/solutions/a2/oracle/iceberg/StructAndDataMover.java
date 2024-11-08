@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
@@ -85,7 +86,7 @@ public class StructAndDataMover {
 			final TableIdentifier icebergTable,
 			final Set<String> idColumnNames,
 			//TODO
-			final Set<String> partitionDefs,
+			final List<Triple<String, String, Integer>>  partitionDefs,
 			final long targetFileSize) throws SQLException {
 		connection = dbMetaData.getConnection();
 		columnsMap = new HashMap<>();
@@ -208,16 +209,46 @@ public class StructAndDataMover {
 				}
 			}
 
-
 			final Schema schema = pkIds.isEmpty() ? new Schema(allColumns) : new Schema(allColumns, pkIds);
 			final PartitionSpec spec;
 			if (partitionDefs != null) {
 				//TODO
+				//TODO  Uppercase Paremeters, Check dependecies etc
 				//TODO
-				//TODO
-				spec = PartitionSpec.builderFor(schema).identity((String) partitionDefs.toArray()[0]).build();
+				PartitionSpec.Builder specBuilder = PartitionSpec.builderFor(schema);
+				for (Triple<String, String, Integer> partitionDef : partitionDefs) {
+					switch (partitionDef.getMiddle()) {
+						case "IDENTITY":
+							specBuilder = specBuilder.identity(partitionDef.getLeft());
+							break;
+						case "YEAR":
+							specBuilder = specBuilder.year(partitionDef.getLeft());
+							break;
+						case "MONTH":
+							specBuilder = specBuilder.month(partitionDef.getLeft());
+							break;
+						case "DAY":
+							specBuilder = specBuilder.day(partitionDef.getLeft());
+							break;
+						case "HOUR":
+							specBuilder = specBuilder.hour(partitionDef.getLeft());
+							break;
+						case "BUCKET":
+							specBuilder = specBuilder.bucket(partitionDef.getLeft(), partitionDef.getRight());
+							break;
+						case "TRUNCATE":
+							specBuilder = specBuilder.truncate(partitionDef.getLeft(), partitionDef.getRight());
+							break;
 
-			 }  else {
+							//TODO Create Else with exception -
+					}
+
+				}
+
+				spec = specBuilder.build();
+
+			 } else {
+
 				spec = PartitionSpec.unpartitioned();
 			}
 			table = catalog.createTable(
