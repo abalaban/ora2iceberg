@@ -20,12 +20,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -37,6 +32,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Namespace;
@@ -47,9 +44,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 
+ *
  * Ora2Iceberg entry point
- * 
+ *
  * @author <a href="mailto:averemee@a2.solutions">Aleksei Veremeev</a>
  */
 public class Ora2Iceberg {
@@ -105,33 +102,33 @@ public class Ora2Iceberg {
 		catalogProps.put(CatalogProperties.WAREHOUSE_LOCATION, cmd.getOptionValue("iceberg-warehouse-location"));
 		catalogProps.put(CatalogProperties.URI, cmd.getOptionValue("iceberg-catalog-uri"));
 		switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))) {
-		case CATALOG_IMPL_REST:
-		case CATALOG_IMPL_JDBC:
-		case CATALOG_IMPL_HADOOP:
-		case CATALOG_IMPL_HIVE:
-		case CATALOG_IMPL_NESSIE:
-		case CATALOG_IMPL_GLUE:
-		case CATALOG_IMPL_DYNAMODB:
-			catalogProps.put(CatalogProperties.CATALOG_IMPL,
-					CATALOG_IMPL.get(StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))));
-			break;
-		default:
-			try {
-				final Class<?> clazz = Class.forName(cmd.getOptionValue("iceberg-catalog-implementation"));
-				if (!clazz.isAssignableFrom(BaseMetastoreCatalog.class)) {
-					LOGGER.error("Class {} must extend {}!",
-							clazz.getCanonicalName(),
-							BaseMetastoreCatalog.class.getCanonicalName());
+			case CATALOG_IMPL_REST:
+			case CATALOG_IMPL_JDBC:
+			case CATALOG_IMPL_HADOOP:
+			case CATALOG_IMPL_HIVE:
+			case CATALOG_IMPL_NESSIE:
+			case CATALOG_IMPL_GLUE:
+			case CATALOG_IMPL_DYNAMODB:
+				catalogProps.put(CatalogProperties.CATALOG_IMPL,
+						CATALOG_IMPL.get(StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))));
+				break;
+			default:
+				try {
+					final Class<?> clazz = Class.forName(cmd.getOptionValue("iceberg-catalog-implementation"));
+					if (!clazz.isAssignableFrom(BaseMetastoreCatalog.class)) {
+						LOGGER.error("Class {} must extend {}!",
+								clazz.getCanonicalName(),
+								BaseMetastoreCatalog.class.getCanonicalName());
+						System.exit(1);
+					}
+					catalogProps.put(CatalogProperties.CATALOG_IMPL,
+							cmd.getOptionValue("iceberg-catalog-implementation"));
+				} catch (ClassNotFoundException cnfe) {
+					LOGGER.error("Unable to load class {} specified as an Apache Iceberg catalog implementation!\n" +
+									"The following exception occured:\n{}\n",
+							cmd.getOptionValue("iceberg-catalog-uri"), cnfe.getMessage());
 					System.exit(1);
 				}
-				catalogProps.put(CatalogProperties.CATALOG_IMPL,
-						cmd.getOptionValue("iceberg-catalog-implementation"));
-			} catch (ClassNotFoundException cnfe) {
-				LOGGER.error("Unable to load class {} specified as an Apache Iceberg catalog implementation!\n" +
-							"The following exception occured:\n{}\n",
-						cmd.getOptionValue("iceberg-catalog-uri"), cnfe.getMessage());
-				System.exit(1);
-			}
 		}
 		catalogProps.put(CatalogProperties.URI, cmd.getOptionValue("iceberg-catalog-uri"));
 		final String[] params = cmd.getOptionValues("P");
@@ -166,7 +163,7 @@ public class Ora2Iceberg {
 			catalog.initialize(cmd.getOptionValue("iceberg-catalog-name"), catalogProps);
 		} catch (ClassNotFoundException cnfe) {
 			LOGGER.error("Unable to load class {} specified as an Apache Iceberg catalog implementation!\n" +
-					"The following exception occured:\n{}\n",
+							"The following exception occured:\n{}\n",
 					catalogProps.get(CatalogProperties.CATALOG_IMPL), cnfe.getMessage());
 			System.exit(1);
 		} catch (NoSuchMethodException | SecurityException ce) {
@@ -174,7 +171,7 @@ public class Ora2Iceberg {
 			sb.append("\n");
 			Arrays.asList(ce.getStackTrace()).forEach(ste -> sb.append(ste.toString()));
 			LOGGER.error("Unable to find no-arg constructor for class {} specified as an Apache Iceberg catalog implementation!\n" +
-					"The following exception occured:\n{}\n{}",
+							"The following exception occured:\n{}\n{}",
 					catalogProps.get(CatalogProperties.CATALOG_IMPL), ce.getMessage(), sb.toString());
 			System.exit(1);
 		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ie) {
@@ -182,14 +179,14 @@ public class Ora2Iceberg {
 			sb.append("\n");
 			Arrays.asList(ie.getStackTrace()).forEach(ste -> sb.append(ste.toString()));
 			LOGGER.error("Unable to instantiate constructor for class {} specified as an Apache Iceberg catalog implementation!\n" +
-					"The following exception occured:\n{}\n{}",
+							"The following exception occured:\n{}\n{}",
 					catalogProps.get(CatalogProperties.CATALOG_IMPL), ie.getMessage(), sb.toString());
 			System.exit(1);
 		}
 		LOGGER.info(
 				"\n=====================\n" +
-				"Connected to Apache Iceberg Catalog {} located on {}" +
-				"\n=====================\n",
+						"Connected to Apache Iceberg Catalog {} located on {}" +
+						"\n=====================\n",
 				catalog.name(), catalogProps.get(CatalogProperties.URI));
 
 		final String sourceUrl = cmd.getOptionValue("source-jdbc-url");
@@ -203,7 +200,7 @@ public class Ora2Iceberg {
 			sb.append("\n");
 			Arrays.asList(sqle.getStackTrace()).forEach(ste -> sb.append(ste.toString()));
 			LOGGER.error("Unable to connect to Oracle Database using jdbcUrl '{}' as user '{}' with password '{}'!\n" +
-					"Exception: {}{}",
+							"Exception: {}{}",
 					sourceUrl, sourceUser, sourcePassword, sqle.getMessage(), sb.toString());
 			System.exit(1);
 		}
@@ -212,8 +209,8 @@ public class Ora2Iceberg {
 			final DatabaseMetaData dbMetaData = connection.getMetaData();
 			LOGGER.info(
 					"\n=====================\n" +
-					"Connected to {}{}\nusing {} {}" +
-					"\n=====================\n",
+							"Connected to {}{}\nusing {} {}" +
+							"\n=====================\n",
 					dbMetaData.getDatabaseProductName(), dbMetaData.getDatabaseProductVersion(),
 					dbMetaData.getDriverName(), dbMetaData.getDriverVersion());
 			final String sourceSchema;
@@ -238,8 +235,8 @@ public class Ora2Iceberg {
 					sourceObject = null;
 					LOGGER.error(
 							"\n=====================\n" +
-							"'{}' is not a valid SQL SELECT statement!" +
-							"\n=====================\n",
+									"'{}' is not a valid SQL SELECT statement!" +
+									"\n=====================\n",
 							cmd.getOptionValue("source-object"));
 					System.exit(1);
 				}
@@ -258,8 +255,8 @@ public class Ora2Iceberg {
 				icebergTableName = null;
 				LOGGER.error(
 						"\n=====================\n" +
-						"Must specify destination table using -T/--iceberg-table-name name when using SQL STATEMENT as source!" +
-						"\n=====================\n",
+								"Must specify destination table using -T/--iceberg-table-name name when using SQL STATEMENT as source!" +
+								"\n=====================\n",
 						cmd.getOptionValue("source-object"));
 				System.exit(1);
 			} else if (StringUtils.isBlank(cmd.getOptionValue("iceberg-table-name"))) {
@@ -270,20 +267,20 @@ public class Ora2Iceberg {
 
 			final TableIdentifier icebergTable;
 			switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))) {
-			case CATALOG_IMPL_NESSIE:
-				// Nessie namespaces are implicit and do not need to be explicitly created or deleted.
-				// The create and delete namespace methods are no-ops for the NessieCatalog.
-				icebergTable = TableIdentifier.of(icebergTableName);
-				break;
-			default:
-				final Namespace namespace;
-				if (StringUtils.isBlank(cmd.getOptionValue("iceberg-namespace"))) {
-					namespace = Namespace.of(sourceSchema);
-				} else {
-					namespace = Namespace.of(cmd.getOptionValue("iceberg-namespace"));
-				}
-				icebergTable = TableIdentifier.of(namespace, icebergTableName);
-				break;
+				case CATALOG_IMPL_NESSIE:
+					// Nessie namespaces are implicit and do not need to be explicitly created or deleted.
+					// The create and delete namespace methods are no-ops for the NessieCatalog.
+					icebergTable = TableIdentifier.of(icebergTableName);
+					break;
+				default:
+					final Namespace namespace;
+					if (StringUtils.isBlank(cmd.getOptionValue("iceberg-namespace"))) {
+						namespace = Namespace.of(sourceSchema);
+					} else {
+						namespace = Namespace.of(cmd.getOptionValue("iceberg-namespace"));
+					}
+					icebergTable = TableIdentifier.of(namespace, icebergTableName);
+					break;
 			}
 
 			if (catalog.tableExists(icebergTable)) {
@@ -303,8 +300,8 @@ public class Ora2Iceberg {
 				idColumnNames = null;
 			} else {
 				idColumnNames = Arrays
-							.stream(cmd.getOptionValues("I"))
-							.collect(Collectors.toCollection(HashSet::new));
+						.stream(cmd.getOptionValues("I"))
+						.collect(Collectors.toCollection(HashSet::new));
 			}
 			long maxFileSize;
 			if (cmd.hasOption("iceberg-max-file-size")) {
@@ -323,14 +320,43 @@ public class Ora2Iceberg {
 			//TODO
 			//TODO options for partition!!!
 			//TODO
-			final Set<String> partColumnNames;
+//			final Set<String> partColumnNames;
+			final List<Triple<String, String, Integer>> partColumnNames;
+
 			if (cmd.getOptionValues("B") == null || cmd.getOptionValues("B").length == 0) {
 				partColumnNames = null;
 			} else {
-				partColumnNames = Arrays
-						.stream(cmd.getOptionValues("B"))
-						.collect(Collectors.toCollection(HashSet::new));
-			}
+//				partColumnNames = Arrays
+//						.stream(cmd.getOptionValues("B"))
+//						.collect(Collectors.toCollection(HashSet::new));
+				partColumnNames = new ArrayList<>();
+				final String[] partParams = cmd.getOptionValues("B");
+
+				if (partParams.length % 2 == 0) {
+					for (int i = 0; i < partParams.length; i+=2) {
+						final String columnName = partParams[i];
+						String partColumnType = partParams[i + 1];
+						int partThirdParam = -1;
+						if (StringUtils.contains(partColumnType, ",")) {
+							// Parse 3rd numeric
+							//TODO
+							partThirdParam = Integer.parseInt(StringUtils.substringAfterLast(partColumnType, ","));
+							partColumnType = StringUtils.substringBefore(partColumnType, ",");
+
+
+							//TODO set numValue
+						}
+						partColumnNames.add(new ImmutableTriple<>(columnName, partColumnType, partThirdParam));
+					}
+					} else {
+						LOGGER.error("Unable to parse from command line values of Apache Iceberg Catalog properties!\n" +
+								"Please check parameters!");
+						System.exit(1);
+					}
+
+
+
+				}
 
 
 			final StructAndDataMover sdm = new StructAndDataMover(
@@ -423,8 +449,8 @@ public class Ora2Iceberg {
 						CATALOG_IMPL_HADOOP + "," +
 						CATALOG_IMPL_HIVE + "," +
 						CATALOG_IMPL_NESSIE + "," +
-						CATALOG_IMPL_GLUE + "," + 
-						CATALOG_IMPL_DYNAMODB + 
+						CATALOG_IMPL_GLUE + "," +
+						CATALOG_IMPL_DYNAMODB +
 						" or full-qualified name of class extending org.apache.iceberg.BaseMetastoreCatalog.")
 				.build();
 		options.addOption(catalogImpl);
