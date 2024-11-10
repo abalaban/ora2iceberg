@@ -55,6 +55,14 @@ import oracle.jdbc.OracleResultSet;
 import oracle.jdbc.OracleTypes;
 import oracle.sql.NUMBER;
 
+import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_IDENTITY;
+import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_BUCKET;
+import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_TRUNCATE;
+import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_YEAR;
+import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_MONTH;
+import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_DAY;
+import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_HOUR;
+
 /**
  *
  * @author <a href="mailto:averemee@a2.solutions">Aleksei Veremeev</a>
@@ -75,15 +83,6 @@ public class StructAndDataMover {
 	private final Map<String, int[]> columnsMap;
 	private final Table table;
 	private final long targetFileSize;
-
-	private static final String PARTITION_TYPE_IDENTITY = "IDENTITY";
-	private static final String PARTITION_TYPE_BUCKET = "BUCKET";
-	private static final String PARTITION_TYPE_TRUNCATE = "TRUNCATE";
-	private static final String PARTITION_TYPE_YEAR = "YEAR";
-	private static final String PARTITION_TYPE_MONTH = "MONTH";
-	private static final String PARTITION_TYPE_DAY = "DAY";
-	private static final String PARTITION_TYPE_HOUR = "HOUR";
-
 
 	StructAndDataMover(
 			final DatabaseMetaData dbMetaData,
@@ -258,8 +257,8 @@ public class StructAndDataMover {
 							break;
 						default:
 							LOGGER.error("Invalid partition type '{}' specified!\n" +
-											"Supported partition types are: `identity`, `year`, `month`, `day`, `bucket`, `truncate`.\n" +
-											"Please verify the partition type and try again.\n",
+		 								 "Supported partition types are: `identity`, `year`, `month`, `day`, `bucket`, `truncate`.\n" +
+										 "Please verify the partition type and try again.\n",
 									partTypeTemp.toLowerCase());
 							// Should we keep original case / upper / lower??
 							System.exit(1);
