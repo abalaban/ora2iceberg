@@ -58,6 +58,14 @@ public class Ora2Iceberg {
 			Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
 	private static final long MAX_FILE_SIZE = 0x08000000;
 
+	static final String PARTITION_TYPE_IDENTITY = "IDENTITY";
+	static final String PARTITION_TYPE_BUCKET = "BUCKET";
+	static final String PARTITION_TYPE_TRUNCATE = "TRUNCATE";
+	static final String PARTITION_TYPE_YEAR = "YEAR";
+	static final String PARTITION_TYPE_MONTH = "MONTH";
+	static final String PARTITION_TYPE_DAY = "DAY";
+	static final String PARTITION_TYPE_HOUR = "HOUR";
+
 
 	//TODO - do we need to add Snowflake and Glue catalogs?
 	private static final String CATALOG_IMPL_REST = "REST";
@@ -321,15 +329,12 @@ public class Ora2Iceberg {
 			//TODO
 			//TODO options for partition!!!
 			//TODO
-//			final Set<String> partColumnNames;
+
 			final List<Triple<String, String, Integer>> partColumnNames;
 
 			if (cmd.getOptionValues("B") == null || cmd.getOptionValues("B").length == 0) {
 				partColumnNames = null;
 			} else {
-//				partColumnNames = Arrays
-//						.stream(cmd.getOptionValues("B"))
-//						.collect(Collectors.toCollection(HashSet::new));
 				partColumnNames = new ArrayList<>();
 				final String[] partParams = cmd.getOptionValues("B");
 
@@ -337,15 +342,27 @@ public class Ora2Iceberg {
 					for (int i = 0; i < partParams.length; i+=2) {
 						final String columnName = partParams[i];
 						String partColumnType = partParams[i + 1];
+						String partThirdParamTemp;
 						int partThirdParam = -1;
+
 						if (StringUtils.contains(partColumnType, ",")) {
-							// Parse 3rd numeric
-							//TODO
-							partThirdParam = Integer.parseInt(StringUtils.substringAfterLast(partColumnType, ","));
+
+							partThirdParamTemp = StringUtils.substringAfterLast(partColumnType, ",");
 							partColumnType = StringUtils.substringBefore(partColumnType, ",");
 
+							// Extract the substring after the last comma and trying to parse it as an integer
+							try {
+								partThirdParam = Integer.parseInt(partThirdParamTemp);
 
-							//TODO set numValue
+							} catch (NumberFormatException nfe) {
+								LOGGER.error("Invalid value {} after the comma in partition type '{}' specified!\n" +
+												"The value after the comma should be a valid integer.\n" +
+												"Please verify the partition type parameter and try again.\n",
+										partThirdParamTemp,
+										partColumnType);
+
+								System.exit(1);
+							}
 						}
 						partColumnNames.add(new ImmutableTriple<>(columnName, partColumnType, partThirdParam));
 					}
@@ -375,7 +392,7 @@ public class Ora2Iceberg {
 
 	private static void setupCliOptions(final Options options) {
 		// Source connection
-		final Option sourceJdbcUrl = Option.builder("u")
+		final Option sourceJdbcUrl = Option.builder("j")
 				.longOpt("source-jdbc-url")
 				.hasArg(true)
 				.required(true)
@@ -387,7 +404,7 @@ public class Ora2Iceberg {
 				.longOpt("source-user")
 				.hasArg(true)
 				.required(true)
-				.desc("Oracle user for source connection ")
+				.desc("Oracle user for source connection")
 				.build();
 		options.addOption(sourceUser);
 
@@ -428,7 +445,7 @@ public class Ora2Iceberg {
 				.longOpt("add-rowid-to-iceberg")
 				.hasArg(false)
 				.required(false)
-				.desc("When specified ROWID pseudocolumn is added to destination as VARCHAR column with name ORA_ROW_ID ansd used as ID. Valid only when <source-object> points to a RDBMS table")
+				.desc("When specified ROWID pseudocolumn is added to destination as VARCHAR column with name ORA_ROW_ID and used as ID. Valid only when <source-object> points to a RDBMS table")
 				.build();
 		options.addOption(addRowId);
 
