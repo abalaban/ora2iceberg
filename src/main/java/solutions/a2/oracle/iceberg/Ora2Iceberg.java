@@ -58,6 +58,7 @@ public class Ora2Iceberg {
 			Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
 	private static final long MAX_FILE_SIZE = 0x08000000;
 
+
 	//TODO - do we need to add Snowflake and Glue catalogs?
 	private static final String CATALOG_IMPL_REST = "REST";
 	private static final String CATALOG_IMPL_JDBC = "JDBC";

@@ -76,6 +76,14 @@ public class StructAndDataMover {
 	private final Table table;
 	private final long targetFileSize;
 
+	private static final String PARTITION_TYPE_IDENTITY = "IDENTITY";
+	private static final String PARTITION_TYPE_BUCKET = "BUCKET";
+	private static final String PARTITION_TYPE_TRUNCATE = "TRUNCATE";
+	private static final String PARTITION_TYPE_YEAR = "YEAR";
+	private static final String PARTITION_TYPE_MONTH = "MONTH";
+	private static final String PARTITION_TYPE_DAY = "DAY";
+	private static final String PARTITION_TYPE_HOUR = "HOUR";
+
 
 	StructAndDataMover(
 			final DatabaseMetaData dbMetaData,
@@ -215,43 +223,49 @@ public class StructAndDataMover {
 			final PartitionSpec spec;
 			if (partitionDefs != null) {
 
-				//spec = PartitionSpec.builderFor(schema).identity((String) partitionDefs.toArray()[0]).build();
 				PartitionSpec.Builder specBuilder = PartitionSpec.builderFor(schema);
+
+				String partTypeTemp, partFieldTemp;
+				Integer partParamTemp;
+
 				for (Triple<String, String, Integer> partitionDef : partitionDefs) {
-					switch (partitionDef.getMiddle()) {
-						case "IDENTITY":
-							specBuilder = specBuilder.identity(partitionDef.getLeft());
-							break;
-						case "YEAR":
-							specBuilder = specBuilder.year(partitionDef.getLeft());
-							break;
-						case "MONTH":
-							specBuilder = specBuilder.month(partitionDef.getLeft());
-							break;
-						case "DAY":
-							specBuilder = specBuilder.day(partitionDef.getLeft());
-							break;
-						case "HOUR":
-							specBuilder = specBuilder.hour(partitionDef.getLeft());
-							break;
-						case "BUCKET":
-							specBuilder = specBuilder.bucket(partitionDef.getLeft(), partitionDef.getRight());
-							break;
-						case "TRUNCATE":
-							specBuilder = specBuilder.truncate(partitionDef.getLeft(), partitionDef.getRight());
-							break;
 
-						//TODO Create Else with exception - if partition type does not exist
+					partTypeTemp = partitionDef.getMiddle().toUpperCase();
+					partFieldTemp = partitionDef.getLeft();
+					partParamTemp = partitionDef.getRight();
+
+					switch (partTypeTemp) {
+						case PARTITION_TYPE_IDENTITY:
+							specBuilder = specBuilder.identity(partFieldTemp);
+							break;
+						case PARTITION_TYPE_YEAR:
+							specBuilder = specBuilder.year(partFieldTemp);
+							break;
+						case PARTITION_TYPE_MONTH:
+							specBuilder = specBuilder.month(partFieldTemp);
+							break;
+						case PARTITION_TYPE_DAY:
+							specBuilder = specBuilder.day(partFieldTemp);
+							break;
+						case PARTITION_TYPE_HOUR:
+							specBuilder = specBuilder.hour(partFieldTemp);
+							break;
+						case PARTITION_TYPE_BUCKET:
+							specBuilder = specBuilder.bucket(partFieldTemp, partParamTemp);
+							break;
+						case PARTITION_TYPE_TRUNCATE:
+							specBuilder = specBuilder.truncate(partFieldTemp, partParamTemp);
+							break;
+						default:
+							LOGGER.error("Invalid partition type '{}' specified!\n" +
+											"Supported partition types are: `identity`, `year`, `month`, `day`, `bucket`, `truncate`.\n" +
+											"Please verify the partition type and try again.\n",
+									partTypeTemp.toLowerCase());
+							// Should we keep original case / upper / lower??
+							System.exit(1);
 					}
-
 				}
-
 				spec = specBuilder.build();
-
-
-
-
-
 			}  else {
 				spec = PartitionSpec.unpartitioned();
 			}
