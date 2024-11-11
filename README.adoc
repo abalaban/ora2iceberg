@@ -23,6 +23,116 @@ To ensure no security vulnerabilities in the dependency libraries, run the follo
 gradle dependencyCheckAnalyze
 ----
 
+=== Parameters
+
+[cols="6*", options="header"]
+|===
+|Parameter |Short Option |Description |Required |Argument Format |Example(s)
+|**--source-jdbc-url**
+|-j
+|Oracle JDBC URL of source connection
+|Yes
+|jdbc:oracle:thin:@server\_url:port/TNS
+|jdbc:oracle:thin:@PROD.COMPANY.COM:1521/PRD
+|**--source-user**
+|-u
+|Oracle user for source connection
+|Yes
+|username
+|scott
+|**--source-password**
+|-p
+|Password for source connection
+|Yes
+|password
+|tiger
+|**--source-schema**
+|-s
+|Source schema name. Uses \<source-user\> if not specified
+|No
+|schema\_name
+|scott
+|**--source-object**
+|-o
+|Name of source table/view, or SQL SELECT statement to query data
+|Yes
+|table\_name
+|EMP
+|**--where-clause**
+|-w
+|Optional WHERE clause for \<source-object\>, valid when pointing to table/view
+|No
+|SQL WHERE clause
+|WHERE deptno \= 10
+|**--add-rowid-to-iceberg**
+|-r
+|Adds ROWID pseudocolumn as VARCHAR column ORA\_ROW\_ID in destination when \<source-object\> points to RDBMS table
+|No
+|None (Flag)
+|(N/A)
+|**--rowid-column-name**
+|-n
+|Custom name for ROWID column, valid when \<source-object\> is a table
+|No
+|column\_name
+|ROW\_ID\_CUSTOM
+|**--iceberg-catalog-implementation**
+|-C
+|Iceberg catalog implementation type (REST, JDBC, HADOOP, etc.) or custom class
+|Yes
+|CATALOG\_TYPE
+|NESSIE
+|**--iceberg-catalog-name**
+|-N
+|Name of Apache Iceberg Catalog
+|Yes
+|CATALOG\_NAME
+|my\_catalog
+|**--iceberg-warehouse-location**
+|-W
+|Location of Apache Iceberg warehouse
+|Yes
+|url
+|"s3://bucket-ab"
+|**--iceberg-catalog-properties**
+|-P
+|Additional properties for Iceberg catalog implementation; \= as separator
+|Yes
+|property=value
+|-Pio-impl=org.apache.iceberg.aws.s3.S3FileIO
+|**--iceberg-namespace**
+|-A
+|Iceberg Catalog namespace, defaults to source schema if not specified
+|No
+|namespace
+|company\_namespace
+|**--iceberg-table-name**
+|-T
+|Iceberg table name, defaults to \<source-object\> if table/view
+|No
+|object\_name
+|EMP
+|**--iceberg-table-id-columns**
+|-I
+|Iceberg table identifier column names
+|No
+|column\_name
+|id\_column=identity
+|**--iceberg-table-partition-by**
+|-B
+|Partitioning definition for table; \= for separator, , for additional params
+|No
+|column=type\[,extra\]
+|-Bdeptno=identity \-Bempno=bucket,4
+|**--iceberg-max-file-size**
+|-Z
+|Max file size (default: 134,217,728 bytes)
+|No
+|number
+|21376827123
+|===
+
+
 == Authors
 **Aleksej Veremeev** - *Initial work* - http://a2-solutions.eu/[A2 Rešitve d.o.o.]
 
