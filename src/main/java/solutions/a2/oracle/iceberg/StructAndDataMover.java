@@ -113,8 +113,8 @@ public class StructAndDataMover {
 			} else {
 				LOGGER.error(
 						"\n=====================\n" +
-								"Unable to access {}.{} !" +
-								"\n=====================\n",
+						"Unable to access {}.{} !" +
+						"\n=====================\n",
 						sourceSchema, sourceObject);
 				throw new SQLException();
 			}
@@ -331,8 +331,8 @@ public class StructAndDataMover {
 									//TODO
 									LOGGER.warn(
 											"\n=====================\n" +
-													"Value of Oracle NUMBER column {} is {}! Setting value to {}!" +
-													"\n=====================\n",
+											"Value of Oracle NUMBER column {} is {}! Setting value to {}!" +
+											"\n=====================\n",
 											entry.getKey(),
 											oraNum.isInf() ? "Infinity" : "Negative infinity",
 											entry.getValue()[NULL_POS] == 1 ? "NULL" :
