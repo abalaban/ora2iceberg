@@ -289,8 +289,10 @@ public class Ora2Iceberg {
 				case CATALOG_IMPL_GLUE:
 					final String glueDb = StringUtils.isBlank(cmd.getOptionValue("iceberg-namespace")) ?
 							sourceSchema : cmd.getOptionValue("iceberg-namespace");
-					if (catalogProps.containsKey(AwsProperties.GLUE_CATALOG_SKIP_NAME_VALIDATION) &&
-							StringUtils.equalsIgnoreCase(catalogProps.get(AwsProperties.GLUE_CATALOG_SKIP_NAME_VALIDATION), "false")) {
+					if ((catalogProps.containsKey(AwsProperties.GLUE_CATALOG_SKIP_NAME_VALIDATION) &&
+							StringUtils.equalsIgnoreCase(catalogProps.get(AwsProperties.GLUE_CATALOG_SKIP_NAME_VALIDATION), "false")) ||
+							(!catalogProps.containsKey(AwsProperties.GLUE_CATALOG_SKIP_NAME_VALIDATION) &&
+									!AwsProperties.GLUE_CATALOG_SKIP_NAME_VALIDATION_DEFAULT)) {
 						LOGGER.warn(
 								"\n=====================\n" +
 								"Converting Oracle upper case SCHEMA/TABLE/COLUMN names to AWS Glue lower case names" +
