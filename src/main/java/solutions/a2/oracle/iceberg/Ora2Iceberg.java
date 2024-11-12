@@ -276,7 +276,6 @@ public class Ora2Iceberg {
 
 			final TableIdentifier icebergTable;
 			switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))) {
-				case CATALOG_IMPL_GLUE:
 				case CATALOG_IMPL_NESSIE:
 					// Nessie namespaces are implicit and do not need to be explicitly created or deleted.
 					// The create and delete namespace methods are no-ops for the NessieCatalog.
