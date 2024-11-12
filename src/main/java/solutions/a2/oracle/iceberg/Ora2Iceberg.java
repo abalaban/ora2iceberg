@@ -13,6 +13,7 @@
 
 package solutions.a2.oracle.iceberg;
 
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
@@ -20,7 +21,14 @@ import java.sql.DatabaseMetaData;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -32,10 +40,12 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.aws.AwsProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.hadoop.Configurable;
@@ -194,8 +204,8 @@ public class Ora2Iceberg {
 		}
 		LOGGER.info(
 				"\n=====================\n" +
-						"Connected to Apache Iceberg Catalog {} located on {}" +
-						"\n=====================\n",
+				"Connected to Apache Iceberg Catalog {} located on {}" +
+				"\n=====================\n",
 				catalog.name(), catalogProps.get(CatalogProperties.URI));
 
 		final String sourceUrl = cmd.getOptionValue("source-jdbc-url");
@@ -218,8 +228,8 @@ public class Ora2Iceberg {
 			final DatabaseMetaData dbMetaData = connection.getMetaData();
 			LOGGER.info(
 					"\n=====================\n" +
-							"Connected to {}{}\nusing {} {}" +
-							"\n=====================\n",
+					"Connected to {}{}\nusing {} {}" +
+					"\n=====================\n",
 					dbMetaData.getDatabaseProductName(), dbMetaData.getDatabaseProductVersion(),
 					dbMetaData.getDriverName(), dbMetaData.getDriverVersion());
 			final String sourceSchema;
@@ -244,8 +254,8 @@ public class Ora2Iceberg {
 					sourceObject = null;
 					LOGGER.error(
 							"\n=====================\n" +
-									"'{}' is not a valid SQL SELECT statement!" +
-									"\n=====================\n",
+							"'{}' is not a valid SQL SELECT statement!" +
+							"\n=====================\n",
 							cmd.getOptionValue("source-object"));
 					System.exit(1);
 				}
@@ -264,8 +274,8 @@ public class Ora2Iceberg {
 				icebergTableName = null;
 				LOGGER.error(
 						"\n=====================\n" +
-								"Must specify destination table using -T/--iceberg-table-name name when using SQL STATEMENT as source!" +
-								"\n=====================\n",
+						"Must specify destination table using -T/--iceberg-table-name name when using SQL STATEMENT as source!" +
+						"\n=====================\n",
 						cmd.getOptionValue("source-object"));
 				System.exit(1);
 			} else if (StringUtils.isBlank(cmd.getOptionValue("iceberg-table-name"))) {
@@ -276,6 +286,38 @@ public class Ora2Iceberg {
 
 			final TableIdentifier icebergTable;
 			switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))) {
+				case CATALOG_IMPL_GLUE:
+					final String glueDb = StringUtils.isBlank(cmd.getOptionValue("iceberg-namespace")) ?
+							sourceSchema : cmd.getOptionValue("iceberg-namespace");
+					if (catalogProps.containsKey(AwsProperties.GLUE_CATALOG_SKIP_NAME_VALIDATION) &&
+							StringUtils.equalsIgnoreCase(catalogProps.get(AwsProperties.GLUE_CATALOG_SKIP_NAME_VALIDATION), "false")) {
+						LOGGER.warn(
+								"\n=====================\n" +
+								"Converting Oracle upper case SCHEMA/TABLE/COLUMN names to AWS Glue lower case names" +
+								"\n=====================\n");
+						icebergTable = TableIdentifier.of(
+								StringUtils.lowerCase(glueDb), StringUtils.lowerCase(icebergTableName));
+					} else {
+						icebergTable = TableIdentifier.of(glueDb, icebergTableName);
+					}
+					try {
+						if (!AwsUtil.checkAndCreateDbIfMissed(icebergTable.namespace().toString())) {
+							LOGGER.error(
+									"\n=====================\n" +
+									"Unable to check or create AWS Glue database {}!" +
+									"\n=====================\n",
+									icebergTable.namespace().toString());
+							System.exit(1);
+						}
+					} catch (IOException ioe) {
+						LOGGER.error(
+								"\n=====================\n" +
+								"AWS  SDK error {}!\n{}\n" +
+								"\n=====================\n",
+								ioe.getMessage(), ExceptionUtils.getStackTrace(ioe));
+						System.exit(1);
+					}
+					break;
 				case CATALOG_IMPL_NESSIE:
 					// Nessie namespaces are implicit and do not need to be explicitly created or deleted.
 					// The create and delete namespace methods are no-ops for the NessieCatalog.
