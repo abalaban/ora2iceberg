@@ -78,8 +78,6 @@ public class Ora2Iceberg {
 
 	static final String UPLOAD_DEFAULT_MODE = "overwrite";
 
-	static boolean icebergTableExists;
-
 	//TODO - do we need to add Snowflake and Glue catalogs?
 	private static final String CATALOG_IMPL_REST = "REST";
 	private static final String CATALOG_IMPL_JDBC = "JDBC";
@@ -214,6 +212,7 @@ public class Ora2Iceberg {
 		final String sourceUrl = cmd.getOptionValue("source-jdbc-url");
 		final String sourceUser = cmd.getOptionValue("source-user");
 		final String sourcePassword = cmd.getOptionValue("source-password");
+		final String whereClause = cmd.getOptionValue("where-clause", "where 1=1");
 		Connection connection = null;
 		try {
 			connection = DriverManager.getConnection(sourceUrl, sourceUser, sourcePassword);
@@ -270,6 +269,20 @@ public class Ora2Iceberg {
 				} else {
 					sourceObject = StringUtils.upperCase(cmd.getOptionValue("source-object"));
 				}
+			}
+
+
+			if (cmd.hasOption("where-clause")) {
+
+				if (!isTableOrView) {
+					LOGGER.error(
+							"\n=====================\n" +
+									"WHERE clause can be provided only for a table or view!" +
+									"\n=====================\n");
+					System.exit(1);
+				}
+				//TODO Do we need to check syntax for WHERE CLAUSE?
+
 			}
 
 			final String icebergTableName;
@@ -345,7 +358,8 @@ public class Ora2Iceberg {
 			}
 
 				String uploadModeValue = cmd.getOptionValue("upload-mode", UPLOAD_DEFAULT_MODE);
-				icebergTableExists = catalog.tableExists(icebergTable);
+
+			    boolean icebergTableExists = catalog.tableExists(icebergTable);
 
 				switch (uploadModeValue.toLowerCase()) {
 						    case "overwrite":
@@ -446,8 +460,9 @@ public class Ora2Iceberg {
 
 				}
 
+
 			final StructAndDataMover sdm = new StructAndDataMover(
-					dbMetaData, sourceSchema, sourceObject, isTableOrView,
+					dbMetaData, sourceSchema, sourceObject, whereClause, isTableOrView, icebergTableExists,
 					catalog, icebergTable, idColumnNames, partColumnNames, maxFileSize);
 
 			sdm.loadData();
@@ -624,17 +639,6 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(uploadMode);
 
-		//TODO remove purge-or-stop option
-		//TODO depricated with new upload-mode option
-		//TODO
-		final Option purgeOrStopOption = Option.builder("M")
-				.longOpt("purge-or-stop")
-				.hasArg(true)
-				.required(false)
-				.desc("Specify 'purge' to drop table if exists or 'stop' to exit if table exists. Default is 'purge'")
-				.build();
-		options.addOption(purgeOrStopOption);
-
 		//TODO
 		//TODO option for column datatype remap, especially NUMBER to INT/LONG !!!
 		//TODO
@@ -654,4 +658,3 @@ public class Ora2Iceberg {
 }
 
 
-	// more code...

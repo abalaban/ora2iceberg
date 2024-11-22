@@ -62,7 +62,6 @@ import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_YEAR;
 import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_MONTH;
 import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_DAY;
 import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_HOUR;
-import static solutions.a2.oracle.iceberg.Ora2Iceberg.icebergTableExists;
 
 /**
  *
@@ -79,8 +78,10 @@ public class StructAndDataMover {
 
 	private final Connection connection;
 	private final boolean isTableOrView;
+	private final boolean icebergTableExists;
 	private final String sourceSchema;
 	private final String sourceObject;
+	private final String whereClause;
 	private final Map<String, int[]> columnsMap;
 	private final Table table;
 	private final long targetFileSize;
@@ -89,7 +90,9 @@ public class StructAndDataMover {
 			final DatabaseMetaData dbMetaData,
 			final String sourceSchema,
 			final String sourceObject,
+			final String whereClause,
 			final boolean isTableOrView,
+			final boolean icebergTableExists,
 			final BaseMetastoreCatalog catalog,
 			final TableIdentifier icebergTable,
 			final Set<String> idColumnNames,
@@ -103,6 +106,8 @@ public class StructAndDataMover {
 		this.sourceSchema = sourceSchema;
 		this.sourceObject = sourceObject;
 		this.targetFileSize = targetFileSize;
+		this.whereClause = whereClause;
+		this.icebergTableExists = icebergTableExists;
 
 		final String sourceCatalog;
 		if (isTableOrView) {
@@ -309,8 +314,9 @@ public class StructAndDataMover {
 			};
 
 			//TODO - where clause!!!
-			final PreparedStatement ps = connection.prepareStatement("select * from \"" + sourceSchema + "\".\"" + sourceObject + "\"");
-			final OracleResultSet rs = (OracleResultSet) ps.executeQuery();
+			final PreparedStatement ps;
+            ps = connection.prepareStatement("select * from \"" + sourceSchema + "\".\"" + sourceObject + "\""+" "+whereClause);
+            final OracleResultSet rs = (OracleResultSet) ps.executeQuery();
 			//TODO - run statistic!
 			//TODO - progress on screen!!!
 			while (rs.next()) {
