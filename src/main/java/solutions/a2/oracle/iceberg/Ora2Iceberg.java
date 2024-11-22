@@ -76,6 +76,9 @@ public class Ora2Iceberg {
 	static final String PARTITION_TYPE_DAY = "DAY";
 	static final String PARTITION_TYPE_HOUR = "HOUR";
 
+	static final String UPLOAD_DEFAULT_MODE = "overwrite";
+
+	static boolean icebergTableExists;
 
 	//TODO - do we need to add Snowflake and Glue catalogs?
 	private static final String CATALOG_IMPL_REST = "REST";
@@ -278,11 +281,16 @@ public class Ora2Iceberg {
 						"\n=====================\n",
 						cmd.getOptionValue("source-object"));
 				System.exit(1);
-			} else if (StringUtils.isBlank(cmd.getOptionValue("iceberg-table-name"))) {
-				icebergTableName = sourceObject;
 			} else {
-				icebergTableName = cmd.getOptionValue("iceberg-table-name");
+				//Changing logic to use Default value in getOptionValue
+				icebergTableName = cmd.getOptionValue("iceberg-table-name", sourceObject);
 			}
+
+//				if (StringUtils.isBlank(cmd.getOptionValue("iceberg-table-name"))) {
+//				icebergTableName = sourceObject;
+//			} else {
+//				icebergTableName = cmd.getOptionValue("iceberg-table-name");
+//			}
 
 			final TableIdentifier icebergTable;
 			switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))) {
@@ -336,17 +344,37 @@ public class Ora2Iceberg {
 					break;
 			}
 
-			if (catalog.tableExists(icebergTable)) {
-				//TODO
-				//TODO need option to purge or stop
-				//TODO currently just purge and continue
-				//TODO
-				LOGGER.info("Dropping table {} from catalog {}", icebergTable.name(), catalog.name());
-				if (!catalog.dropTable(icebergTable, true)) {
-					LOGGER.error("Unable to drop table {} from catalog {}", icebergTable.name(), catalog.name());
-					System.exit(1);
-				}
-			}
+				String uploadModeValue = cmd.getOptionValue("upload-mode", UPLOAD_DEFAULT_MODE);
+				icebergTableExists = catalog.tableExists(icebergTable);
+
+				switch (uploadModeValue.toLowerCase()) {
+						    case "overwrite":
+								if (catalog.tableExists(icebergTable)) {
+									LOGGER.info("Dropping table {} from catalog {}", icebergTable.name(), catalog.name());
+									if (!catalog.dropTable(icebergTable, true)) {
+										LOGGER.error("Unable to drop table {} from catalog {}", icebergTable.name(), catalog.name());
+										System.exit(1);
+									}
+									icebergTableExists = false;
+								}
+						        break;
+						    case "append":
+						        LOGGER.info("Appending data to table {} in catalog {}", icebergTable.name(), catalog.name());
+						        //TODO Check if we need additional logic for append
+								//TODO in preProcess
+						        break;
+						    case "upsert":
+						        LOGGER.info("Upserting data to table {} in catalog {}", icebergTable.name(), catalog.name());
+								//TODO Check if we need additional logic for upsert
+								//TODO Probably need to Check Primary Keys
+								LOGGER.error("upsert upload mode not Implemented Yet");
+								System.exit(1);
+						        break;
+						    default:
+						        LOGGER.error("Unknown upload mode {}", uploadModeValue);
+						        System.exit(1);
+						}
+
 
 			final Set<String> idColumnNames;
 			if (cmd.getOptionValues("I") == null || cmd.getOptionValues("I").length == 0) {
@@ -416,10 +444,7 @@ public class Ora2Iceberg {
 						System.exit(1);
 					}
 
-
-
 				}
-
 
 			final StructAndDataMover sdm = new StructAndDataMover(
 					dbMetaData, sourceSchema, sourceObject, isTableOrView,
@@ -435,6 +460,7 @@ public class Ora2Iceberg {
 	}
 
 	private static void setupCliOptions(final Options options) {
+
 		// Source connection
 		final Option sourceJdbcUrl = Option.builder("j")
 				.longOpt("source-jdbc-url")
@@ -588,6 +614,27 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(maxFileSize);
 
+
+		final Option uploadMode = Option.builder("m")
+				.longOpt("upload-mode")
+				.hasArg(true)
+				.argName("mode")
+				.required(false)
+				.desc("Specifies the upload mode. Options: overwrite, append, upsert. Default is overwrite")
+				.build();
+		options.addOption(uploadMode);
+
+		//TODO remove purge-or-stop option
+		//TODO depricated with new upload-mode option
+		//TODO
+		final Option purgeOrStopOption = Option.builder("M")
+				.longOpt("purge-or-stop")
+				.hasArg(true)
+				.required(false)
+				.desc("Specify 'purge' to drop table if exists or 'stop' to exit if table exists. Default is 'purge'")
+				.build();
+		options.addOption(purgeOrStopOption);
+
 		//TODO
 		//TODO option for column datatype remap, especially NUMBER to INT/LONG !!!
 		//TODO
@@ -605,3 +652,6 @@ public class Ora2Iceberg {
 	}
 
 }
+
+
+	// more code...
