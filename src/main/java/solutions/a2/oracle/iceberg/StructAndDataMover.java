@@ -62,6 +62,7 @@ import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_YEAR;
 import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_MONTH;
 import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_DAY;
 import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_HOUR;
+import static solutions.a2.oracle.iceberg.Ora2Iceberg.icebergTableExists;
 
 /**
  *
@@ -265,13 +266,18 @@ public class StructAndDataMover {
 					}
 				}
 				spec = specBuilder.build();
-			}  else {
-				spec = PartitionSpec.unpartitioned();
-			}
-			table = catalog.createTable(
-					icebergTable,
-					schema,
-					spec);
+				}  else {
+				    spec = PartitionSpec.unpartitioned();
+				}
+
+				if (!icebergTableExists) {
+				    table = catalog.createTable(
+				        icebergTable,
+				        schema,
+				        spec);
+				} else {
+				    table = catalog.loadTable(icebergTable);
+				}
 		} else {
 			//TODO
 			//TODO
