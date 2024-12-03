@@ -78,7 +78,6 @@ public class StructAndDataMover {
 
 	private final Connection connection;
 	private final boolean isTableOrView;
-	private final boolean icebergTableExists;
 	private final String sourceSchema;
 	private final String sourceObject;
 	private final String whereClause;
@@ -107,7 +106,6 @@ public class StructAndDataMover {
 		this.sourceObject = sourceObject;
 		this.targetFileSize = targetFileSize;
 		this.whereClause = whereClause;
-		this.icebergTableExists = icebergTableExists;
 
 		final String sourceCatalog;
 		if (isTableOrView) {
@@ -208,15 +206,20 @@ public class StructAndDataMover {
 					typeAndScale[NULL_POS] = nullable ? 1 : 0;
 					columnsMap.put(columnName, typeAndScale);
 					columnId++;
-					if (nullable) {
-						allColumns.add(
-								Types.NestedField.optional(columnId, columnName, type));
+					if (!nullable || (idColumnsPresent && idColumnNames.contains(columnName))) {
+						if (nullable) {
+							LOGGER.error("Unable to add nullable column {} as equality delete column!", columnName);
+							System.exit(1);
+						} else {
+							allColumns.add(
+								Types.NestedField.required(columnId, columnName, type));
+						}
 					} else {
 						allColumns.add(
-								Types.NestedField.required(columnId, columnName, type));
+								Types.NestedField.optional(columnId, columnName, type));
 					}
 					if (idColumnsPresent) {
-						if (idColumnNames.contains(columnName) && !nullable) {
+						if (idColumnNames.contains(columnName) /* && !nullable */) {
 							pkIds.add(columnId);
 						}
 					}
