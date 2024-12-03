@@ -299,12 +299,6 @@ public class Ora2Iceberg {
 				icebergTableName = cmd.getOptionValue("iceberg-table-name", sourceObject);
 			}
 
-//				if (StringUtils.isBlank(cmd.getOptionValue("iceberg-table-name"))) {
-//				icebergTableName = sourceObject;
-//			} else {
-//				icebergTableName = cmd.getOptionValue("iceberg-table-name");
-//			}
-
 			final TableIdentifier icebergTable;
 			switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))) {
 				case CATALOG_IMPL_GLUE:
@@ -457,9 +451,7 @@ public class Ora2Iceberg {
 								"Please check parameters!");
 						System.exit(1);
 					}
-
 				}
-
 
 			final StructAndDataMover sdm = new StructAndDataMover(
 					dbMetaData, sourceSchema, sourceObject, whereClause, isTableOrView, icebergTableExists,
