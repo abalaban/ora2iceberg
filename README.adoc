@@ -130,6 +130,12 @@ gradle dependencyCheckAnalyze
 |No
 |number
 |21376827123
+|**--upload-mode**
+|-m
+|Specifies the upload mode. Options: overwrite, append (default: overwrite)
+|No
+|option
+|-m=append
 |===
 
 
