@@ -79,7 +79,7 @@ public class Ora2Iceberg {
 
 	static final String UPLOAD_DEFAULT_MODE = "full";
 
-	//TODO - do we need to add Snowflake and Glue catalogs?
+	//TODO - do we need to add Snowflake catalog?
 	private static final String CATALOG_IMPL_REST = "REST";
 	private static final String CATALOG_IMPL_JDBC = "JDBC";
 	private static final String CATALOG_IMPL_HADOOP = "HADOOP";
@@ -360,6 +360,7 @@ public class Ora2Iceberg {
 				switch (uploadModeValue.toLowerCase()) {
 						    case "full":
 								if (catalog.tableExists(icebergTable)) {
+									LOGGER.info("Starting upload in full mode...");
 									LOGGER.info("Dropping table {} from catalog {}", icebergTable.name(), catalog.name());
 									if (!catalog.dropTable(icebergTable, true)) {
 										LOGGER.error("Unable to drop table {} from catalog {}", icebergTable.name(), catalog.name());
@@ -369,19 +370,21 @@ public class Ora2Iceberg {
 								}
 						        break;
 						    case "incremental":
+								LOGGER.info("Starting upload in incremental mode...");
 						        LOGGER.info("Add only data to table {} in catalog {}", icebergTable.name(), catalog.name());
 						        //TODO Check if we need additional logic for append
 								//TODO in preProcess
 						        break;
 						    case "merge":
-						        LOGGER.info("Upserting data to table {} in catalog {}", icebergTable.name(), catalog.name());
+								LOGGER.info("Starting upload in merge mode...");
+						        LOGGER.info("Merging data to table {} in catalog {}", icebergTable.name(), catalog.name());
 								//TODO Check if we need additional logic for upsert
 								//TODO Probably need to Check Primary Keys
-								LOGGER.error("upsert upload mode not Implemented Yet");
+								LOGGER.error("Merge upload mode is Not Implemented Yet");
 								System.exit(1);
 						        break;
 						    default:
-						        LOGGER.error("Unknown upload mode {}. Allowed full (replace), incremental (add only), merge (update/delete/insert)", uploadModeValue);
+						        LOGGER.error("Unknown upload mode {}. Allowed full (replace), incremental (add only), merge (add/replace/delete)", uploadModeValue);
 						        System.exit(1);
 						}
 
@@ -412,11 +415,11 @@ public class Ora2Iceberg {
 
 			final List<Triple<String, String, Integer>> partColumnNames;
 
-			if (cmd.getOptionValues("B") == null || cmd.getOptionValues("B").length == 0) {
+			if (cmd.getOptionValues("P") == null || cmd.getOptionValues("P").length == 0) {
 				partColumnNames = null;
 			} else {
 				partColumnNames = new ArrayList<>();
-				final String[] partParams = cmd.getOptionValues("B");
+				final String[] partParams = cmd.getOptionValues("P");
 
 				if (partParams.length % 2 == 0) {
 					for (int i = 0; i < partParams.length; i+=2) {

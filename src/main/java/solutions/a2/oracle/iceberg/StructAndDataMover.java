@@ -39,6 +39,7 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.data.GenericAppenderFactory;
 import org.apache.iceberg.data.GenericRecord;
+import org.apache.iceberg.data.InternalRecordWrapper;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.io.OutputFileFactory;
 import org.apache.iceberg.io.PartitionedFanoutWriter;
@@ -346,9 +347,10 @@ public class StructAndDataMover {
 	void loadData() throws SQLException {
 
 		int partitionId = 1, taskId = 1;
-		final GenericAppenderFactory af = new GenericAppenderFactory(table.schema());
+		final GenericAppenderFactory af = new GenericAppenderFactory(table.schema(),table.spec());
 		final OutputFileFactory off = OutputFileFactory.builderFor(table, partitionId, taskId).format(FileFormat.PARQUET).build();
 		final PartitionKey partitionKey = new PartitionKey(table.spec(), table.spec().schema());
+		final InternalRecordWrapper recordWrapper = new InternalRecordWrapper(table.schema().asStruct());
 
 		if (isTableOrView) {
 
@@ -360,7 +362,8 @@ public class StructAndDataMover {
 					targetFileSize) {
 				@Override
 				protected PartitionKey partition(Record record) {
-					partitionKey.partition(record);
+//					partitionKey.partition(record);
+					partitionKey.partition(recordWrapper.wrap(record));
 					return partitionKey;
 				}
 			};
