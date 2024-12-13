@@ -51,7 +51,6 @@ public class OracleToIcebergTypeMapper {
             this.icebergTypeSpec = icebergTypeSpec;
         }
     }
-
     /**
      * Configure overrides from a single string.
      * Example: "SUPPLIER_ID:NUMBER=long; %_ID:NUMBER=long; PRODUCT_%:NUMBER=decimal(20,6)"
@@ -222,6 +221,7 @@ public class OracleToIcebergTypeMapper {
             case "BINARY_DOUBLE":
                 if (originalPrecision > 0 && originalScale >= 0) {
                     this.mappedType = java.sql.Types.NUMERIC;
+                    //TODO
                     this.finalPrecision = originalPrecision <= 0 ? 38 : originalPrecision;
                     this.finalScale = originalScale < 0 ? 10 : originalScale;
                 } else {

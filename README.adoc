@@ -24,119 +24,39 @@ gradle dependencyCheckAnalyze
 ----
 
 === Parameters
+:icons:
+[cols="2,1,2,1,3", options="header"]
+|===
+| Old Parameter                      | Old Short | New Parameter            | New Short | Short Description
 
-[cols="6*", options="header"]
+5+| *Source Connection Parameters*
+| `--source-jdbc-url`             | `-j` | `--source-jdbc-url`       | `-j` | JDBC URL of the source database connection
+| `--source-user`                 | `-u` | `--source-user`           | `-u` | Username for source connection
+| `--source-password`             | `-p` | `--source-password`       | `-p` | Password for source connection
+| `--source-schema`               | `-s` | `--source-schema`         | `-s` | Source schema name (defaults to source user)
+| `--source-object`               | `-o` | `--source-object`         | `-o` | Table/view name or SQL SELECT for source data
+| `--where-clause`                | `-w` | `--source-where`          | `-w` | WHERE clause to filter source data
+
+5+| *Iceberg Destination Parameters*
+| `--iceberg-catalog-implementation` | `-C` | `--iceberg-catalog-type`  | `-T` | Type of Iceberg catalog (e.g., NESSIE, REST)
+| `--iceberg-catalog-name`            | `-N` | `--iceberg-catalog`       | `-C` | Name of the Iceberg catalog
+| `--iceberg-warehouse-location`      | `-W` | `--iceberg-warehouse`     | `-H` | Iceberg warehouse location (e.g. S3 URL)
+| `--iceberg-catalog-properties`      | `-P` | `--iceberg-catalog-properties`    | `-R` | Additional properties for Iceberg catalog
+| `--iceberg-namespace`               | `-A` | `--iceberg-namespace`     | `-N` | Namespace for Iceberg tables (default: schema)
+| `--iceberg-table-name`              | `-T` | `--iceberg-table`         | `-t` | Iceberg table name (defaults to source object)
+| `--iceberg-table-id-columns`        | `-I` | `--iceberg-id-columns`    | `-I` | Identifier column(s) for the Iceberg table
+| `--iceberg-table-partition-by`      | `-B` | `--iceberg-partition`     | `-P` | Partitioning definition for the Iceberg table
+| `--iceberg-max-file-size`           | `-Z` | `--iceberg-max-file-size` | `-Z` | Maximum Iceberg data file size
+
+5+| *Additional Options*
+| `--add-rowid-to-iceberg` | `-r` | `--add-rowid-to-iceberg` | `-r` | Add ROWID pseudocolumn as ORA_ROW_ID in destination table
+| `--rowid-column-name`    | `-n` | `--rowid-column`         | `-q` | Custom name for the ROWID column
+| `--upload-mode`          | `-m` | `--upload-mode`          | `-e` | Upload mode: `full` (replace), `incremental` (add only), `merge` (update/delete/insert). `merge` is `not implemented yet`
+| `--default-numeric`      | N/A  | `--default-number-type`  | `-d` | Default NUMERIC precision/scale for ambiguous NUMBER columns
+| `--data-type`            | N/A  | `--data-type-map`        | `-m` | Custom mappings from source types to Iceberg types
+| `--auto-infer-types`     | N/A  | `--auto-infer-types`     | `-f` | Automatically infer numeric types (e.g., BIGINT vs NUMERIC). `not implemented yet`
 |===
-|Parameter |Short Option |Description |Required |Argument Format |Example(s)
-|**--source-jdbc-url**
-|-j
-|Oracle JDBC URL of source connection
-|Yes
-|jdbc:oracle:thin:@server_url:port/TNS
-|jdbc:oracle:thin:@PROD.COMPANY.COM:1521/PRD
-|**--source-user**
-|-u
-|Oracle user for source connection
-|Yes
-|username
-|scott
-|**--source-password**
-|-p
-|Password for source connection
-|Yes
-|password
-|tiger
-|**--source-schema**
-|-s
-|Source schema name. Uses <source-user> if not specified
-|No
-|schema_name
-|scott
-|**--source-object**
-|-o
-|Name of source table/view, or SQL SELECT statement to query data
-|Yes
-|table_name
-|EMP
-|**--where-clause**
-|-w
-|Optional WHERE clause for <source-object>, valid when pointing to table/view
-|No
-|SQL WHERE clause
-|WHERE deptno = 10
-|**--add-rowid-to-iceberg**
-|-r
-|Adds ROWID pseudocolumn as VARCHAR column ORA_ROW_ID in destination when <source-object> points to RDBMS table
-|No
-|None (Flag)
-|(N/A)
-|**--rowid-column-name**
-|-n
-|Custom name for ROWID column, valid when <source-object> is a table
-|No
-|column_name
-|ROW_ID_CUSTOM
-|**--iceberg-catalog-implementation**
-|-C
-|Iceberg catalog implementation type (REST, JDBC, HADOOP, etc.) or custom class
-|Yes
-|CATALOG_TYPE
-|NESSIE
-|**--iceberg-catalog-name**
-|-N
-|Name of Apache Iceberg Catalog
-|Yes
-|CATALOG_NAME
-|my_catalog
-|**--iceberg-warehouse-location**
-|-W
-|Location of Apache Iceberg warehouse
-|Yes
-|url
-|"s3://bucket-ab"
-|**--iceberg-catalog-properties**
-|-P
-|Additional properties for Iceberg catalog implementation; = as separator
-|Yes
-|property=value
-|-Pio-impl=org.apache.iceberg.aws.s3.S3FileIO
-|**--iceberg-namespace**
-|-A
-|Iceberg Catalog namespace, defaults to source schema if not specified
-|No
-|namespace
-|company_namespace
-|**--iceberg-table-name**
-|-T
-|Iceberg table name, defaults to <source-object> if table/view
-|No
-|object_name
-|EMP
-|**--iceberg-table-id-columns**
-|-I
-|Iceberg table identifier column names
-|No
-|column_name
-|id_column=identity
-|**--iceberg-table-partition-by**
-|-B
-|Partitioning definition for table; = for separator, , for additional params
-|No
-|column=type[,extra]
-|-Bdeptno=identity -Bempno=bucket,4
-|**--iceberg-max-file-size**
-|-Z
-|Max file size (default: 134,217,728 bytes)
-|No
-|number
-|21376827123
-|**--upload-mode**
-|-m
-|Specifies the upload mode. Options: overwrite, append (default: overwrite)
-|No
-|option
-|-m=append
-|===
+
 
 
 == Authors

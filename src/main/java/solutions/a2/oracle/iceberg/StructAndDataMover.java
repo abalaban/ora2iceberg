@@ -52,7 +52,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import oracle.jdbc.OracleResultSet;
-import oracle.jdbc.OracleTypes;
 import oracle.sql.NUMBER;
 
 import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_IDENTITY;
@@ -77,10 +76,12 @@ public class StructAndDataMover {
 	private static final int INFO_SIZE = 4;
 
 	private final Connection connection;
-	private final boolean isTableOrView;
+    private final String dataTypeMap;
+    private final boolean isTableOrView;
 	private final String sourceSchema;
 	private final String sourceObject;
 	private final String whereClause;
+	private final String defaultNumeric;
 	private final Map<String, int[]> columnsMap;
 	private final Table table;
 	private final long targetFileSize;
@@ -117,14 +118,18 @@ public class StructAndDataMover {
 			//TODO
 			//final Set<String> partitionDefs,
 			final List<Triple<String, String, Integer>>  partitionDefs,
-			final long targetFileSize) throws SQLException {
+			final long targetFileSize,
+			String defaultNumeric,
+			String dataTypeMap) throws SQLException {
 		connection = dbMetaData.getConnection();
-		columnsMap = new HashMap<>();
+        columnsMap = new HashMap<>();
 		this.isTableOrView = isTableOrView;
 		this.sourceSchema = sourceSchema;
 		this.sourceObject = sourceObject;
 		this.targetFileSize = targetFileSize;
 		this.whereClause = whereClause;
+		this.defaultNumeric = defaultNumeric;
+		this.dataTypeMap = dataTypeMap;
 
 		final String sourceCatalog;
 		if (isTableOrView) {
@@ -147,8 +152,9 @@ public class StructAndDataMover {
 			final Set<Integer> pkIds = new HashSet<>();
 			int columnId = 0;
 
-			OracleToIcebergTypeMapper.configureOverrides("ZONE_CONTROL:NUMBER=integer; %_ID:NUMBER=long; LOCATOR_%:NUMBER=decimal(38,0)");
-			OracleToIcebergTypeMapper.configureDefaultNumberFallback("decimal(38,10)");
+			if (dataTypeMap != null && !dataTypeMap.isEmpty()) {OracleToIcebergTypeMapper.configureOverrides(dataTypeMap);}
+
+			OracleToIcebergTypeMapper.configureDefaultNumberFallback(defaultNumeric);
 
 			final boolean idColumnsPresent = idColumnNames != null && !idColumnNames.isEmpty();
 			final ResultSet columns = dbMetaData.getColumns(sourceCatalog, sourceSchema, sourceObject, "%");
@@ -222,12 +228,12 @@ public class StructAndDataMover {
 
 				mappedType = mapper.getMappedType();
 				type = mapper.getType();
-				int finalPrecision = mapper.getPrecision();
-				int finalScale = mapper.getScale();
+				final int finalPrecision = mapper.getPrecision();
+				final int finalScale = mapper.getScale();
 
 
-				LOGGER.info("Column map info {} {} {} {}.{}",
-						columnName, mappedType, jdbcTypeToString(mappedType), finalPrecision, finalScale);
+				LOGGER.info("Column map info {}:{}={}({}.{})",
+						columnName, jdbcTypeToString(jdbcType), jdbcTypeToString(mappedType), finalPrecision, finalScale);
 
 				addColumn = true;
 				if (addColumn) {
@@ -282,27 +288,30 @@ public class StructAndDataMover {
 					partFieldTemp = partitionDef.getLeft();
 					partParamTemp = partitionDef.getRight();
 
+					LOGGER.info("Column map info {} {} {}",
+							partTypeTemp, partFieldTemp, partParamTemp);
+
 					switch (partTypeTemp) {
 						case PARTITION_TYPE_IDENTITY:
-							specBuilder = specBuilder.identity(partFieldTemp);
+							specBuilder.identity(partFieldTemp);
 							break;
 						case PARTITION_TYPE_YEAR:
-							specBuilder = specBuilder.year(partFieldTemp);
+							specBuilder.year(partFieldTemp);
 							break;
 						case PARTITION_TYPE_MONTH:
-							specBuilder = specBuilder.month(partFieldTemp);
+							specBuilder.month(partFieldTemp);
 							break;
 						case PARTITION_TYPE_DAY:
-							specBuilder = specBuilder.day(partFieldTemp);
+							specBuilder.day(partFieldTemp);
 							break;
 						case PARTITION_TYPE_HOUR:
-							specBuilder = specBuilder.hour(partFieldTemp);
+							specBuilder.hour(partFieldTemp);
 							break;
 						case PARTITION_TYPE_BUCKET:
-							specBuilder = specBuilder.bucket(partFieldTemp, partParamTemp);
+							specBuilder.bucket(partFieldTemp, partParamTemp);
 							break;
 						case PARTITION_TYPE_TRUNCATE:
-							specBuilder = specBuilder.truncate(partFieldTemp, partParamTemp);
+							specBuilder.truncate(partFieldTemp, partParamTemp);
 							break;
 						default:
 							LOGGER.error("Invalid partition type '{}' specified!\n" +
@@ -484,9 +493,9 @@ public class StructAndDataMover {
 
 		} else {
 			//TODO
+			//TODO  Select Statement Support Here (Not Table/View)
 			//TODO
-			//TODO
-			throw new SQLException("Not supported yet!");
+			throw new SQLException("Select Statement Not supported yet!");
 		}
 	}
 
