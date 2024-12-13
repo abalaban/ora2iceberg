@@ -67,6 +67,7 @@ public class Ora2Iceberg {
 			"(.*?)SELECT(.*?)FROM(.*?)",
 			Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
 	private static final long MAX_FILE_SIZE = 0x08000000;
+	private static final String DEFAULT_NUMBER_FORMAT = "decimal(38,10)";
 
 	static final String PARTITION_TYPE_IDENTITY = "IDENTITY";
 	static final String PARTITION_TYPE_BUCKET = "BUCKET";
@@ -76,7 +77,7 @@ public class Ora2Iceberg {
 	static final String PARTITION_TYPE_DAY = "DAY";
 	static final String PARTITION_TYPE_HOUR = "HOUR";
 
-	static final String UPLOAD_DEFAULT_MODE = "overwrite";
+	static final String UPLOAD_DEFAULT_MODE = "full";
 
 	//TODO - do we need to add Snowflake and Glue catalogs?
 	private static final String CATALOG_IMPL_REST = "REST";
@@ -119,9 +120,9 @@ public class Ora2Iceberg {
 		}
 
 		final Map<String, String> catalogProps = new HashMap<>();
-		catalogProps.put(CatalogProperties.WAREHOUSE_LOCATION, cmd.getOptionValue("iceberg-warehouse-location"));
+		catalogProps.put(CatalogProperties.WAREHOUSE_LOCATION, cmd.getOptionValue("iceberg-warehouse"));
 		catalogProps.put(CatalogProperties.URI, cmd.getOptionValue("iceberg-catalog-uri"));
-		switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))) {
+		switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type"))) {
 			case CATALOG_IMPL_REST:
 			case CATALOG_IMPL_JDBC:
 			case CATALOG_IMPL_HADOOP:
@@ -130,11 +131,11 @@ public class Ora2Iceberg {
 			case CATALOG_IMPL_GLUE:
 			case CATALOG_IMPL_DYNAMODB:
 				catalogProps.put(CatalogProperties.CATALOG_IMPL,
-						CATALOG_IMPL.get(StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))));
+						CATALOG_IMPL.get(StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type"))));
 				break;
 			default:
 				try {
-					final Class<?> clazz = Class.forName(cmd.getOptionValue("iceberg-catalog-implementation"));
+					final Class<?> clazz = Class.forName(cmd.getOptionValue("iceberg-catalog-type"));
 					if (!clazz.isAssignableFrom(BaseMetastoreCatalog.class)) {
 						LOGGER.error("Class {} must extend {}!",
 								clazz.getCanonicalName(),
@@ -142,7 +143,7 @@ public class Ora2Iceberg {
 						System.exit(1);
 					}
 					catalogProps.put(CatalogProperties.CATALOG_IMPL,
-							cmd.getOptionValue("iceberg-catalog-implementation"));
+							cmd.getOptionValue("iceberg-catalog-type"));
 				} catch (ClassNotFoundException cnfe) {
 					LOGGER.error("Unable to load class {} specified as an Apache Iceberg catalog implementation!\n" +
 									"The following exception occured:\n{}\n",
@@ -163,7 +164,7 @@ public class Ora2Iceberg {
 				System.exit(1);
 			}
 		}
-		if (StringUtils.equals(CATALOG_IMPL_JDBC, StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))) &&
+		if (StringUtils.equals(CATALOG_IMPL_JDBC, StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type"))) &&
 				StringUtils.startsWith(catalogProps.get(CatalogProperties.URI), PREFIX_POSTGRESQL)) {
 			if (!isDriverLoaded(DRIVER_POSTGRESQL)) {
 				try {
@@ -180,7 +181,7 @@ public class Ora2Iceberg {
 				//EcsCatalog, GlueCatalog, JdbcCatalog, NessieCatalog, RESTCatalog, RESTSessionCatalog, SnowflakeCatalog
 				((Configurable<Object>) catalog).setConf(new Configuration());
 			}
-			catalog.initialize(cmd.getOptionValue("iceberg-catalog-name"), catalogProps);
+			catalog.initialize(cmd.getOptionValue("iceberg-catalog"), catalogProps);
 		} catch (ClassNotFoundException cnfe) {
 			LOGGER.error("Unable to load class {} specified as an Apache Iceberg catalog implementation!\n" +
 							"The following exception occured:\n{}\n",
@@ -213,6 +214,7 @@ public class Ora2Iceberg {
 		final String sourceUser = cmd.getOptionValue("source-user");
 		final String sourcePassword = cmd.getOptionValue("source-password");
 		final String whereClause = cmd.getOptionValue("where-clause", "where 1=1");
+		final String dataTypeMap = cmd.getOptionValue("data-type-map");
 		Connection connection = null;
 		try {
 			connection = DriverManager.getConnection(sourceUrl, sourceUser, sourcePassword);
@@ -286,21 +288,21 @@ public class Ora2Iceberg {
 			}
 
 			final String icebergTableName;
-			if (StringUtils.isBlank(cmd.getOptionValue("iceberg-table-name")) && !isTableOrView) {
+			if (StringUtils.isBlank(cmd.getOptionValue("iceberg-table")) && !isTableOrView) {
 				icebergTableName = null;
 				LOGGER.error(
 						"\n=====================\n" +
-						"Must specify destination table using -T/--iceberg-table-name name when using SQL STATEMENT as source!" +
+						"Must specify destination table using -T/--iceberg-table name when using SQL STATEMENT as source!" +
 						"\n=====================\n",
 						cmd.getOptionValue("source-object"));
 				System.exit(1);
 			} else {
 				//Changing logic to use Default value in getOptionValue
-				icebergTableName = cmd.getOptionValue("iceberg-table-name", sourceObject);
+				icebergTableName = cmd.getOptionValue("iceberg-table", sourceObject);
 			}
 
 			final TableIdentifier icebergTable;
-			switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-implementation"))) {
+			switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type"))) {
 				case CATALOG_IMPL_GLUE:
 					final String glueDb = StringUtils.isBlank(cmd.getOptionValue("iceberg-namespace")) ?
 							sourceSchema : cmd.getOptionValue("iceberg-namespace");
@@ -356,7 +358,7 @@ public class Ora2Iceberg {
 			    boolean icebergTableExists = catalog.tableExists(icebergTable);
 
 				switch (uploadModeValue.toLowerCase()) {
-						    case "overwrite":
+						    case "full":
 								if (catalog.tableExists(icebergTable)) {
 									LOGGER.info("Dropping table {} from catalog {}", icebergTable.name(), catalog.name());
 									if (!catalog.dropTable(icebergTable, true)) {
@@ -366,12 +368,12 @@ public class Ora2Iceberg {
 									icebergTableExists = false;
 								}
 						        break;
-						    case "append":
-						        LOGGER.info("Appending data to table {} in catalog {}", icebergTable.name(), catalog.name());
+						    case "incremental":
+						        LOGGER.info("Add only data to table {} in catalog {}", icebergTable.name(), catalog.name());
 						        //TODO Check if we need additional logic for append
 								//TODO in preProcess
 						        break;
-						    case "upsert":
+						    case "merge":
 						        LOGGER.info("Upserting data to table {} in catalog {}", icebergTable.name(), catalog.name());
 								//TODO Check if we need additional logic for upsert
 								//TODO Probably need to Check Primary Keys
@@ -379,7 +381,7 @@ public class Ora2Iceberg {
 								System.exit(1);
 						        break;
 						    default:
-						        LOGGER.error("Unknown upload mode {}", uploadModeValue);
+						        LOGGER.error("Unknown upload mode {}. Allowed full (replace), incremental (add only), merge (update/delete/insert)", uploadModeValue);
 						        System.exit(1);
 						}
 
@@ -406,9 +408,7 @@ public class Ora2Iceberg {
 				maxFileSize = MAX_FILE_SIZE;
 			}
 
-			//TODO
-			//TODO options for partition!!!
-			//TODO
+			String defaultNumeric = cmd.getOptionValue("default-number-type",DEFAULT_NUMBER_FORMAT);
 
 			final List<Triple<String, String, Integer>> partColumnNames;
 
@@ -455,7 +455,7 @@ public class Ora2Iceberg {
 
 			final StructAndDataMover sdm = new StructAndDataMover(
 					dbMetaData, sourceSchema, sourceObject, whereClause, isTableOrView, icebergTableExists,
-					catalog, icebergTable, idColumnNames, partColumnNames, maxFileSize);
+					catalog, icebergTable, idColumnNames, partColumnNames, maxFileSize, defaultNumeric, dataTypeMap);
 
 			sdm.loadData();
 
@@ -526,16 +526,16 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(addRowId);
 
-		final Option rowIdColumnName = Option.builder("n")
-				.longOpt("rowid-column-name")
+		final Option rowIdColumnName = Option.builder("q")
+				.longOpt("rowid-column")
 				.hasArg(true)
 				.required(false)
 				.desc("Specifies the name for the column in destination table storing the source ROWIDs. Default - " + ROWID_KEY)
 				.build();
 		options.addOption(rowIdColumnName);
 
-		final Option catalogImpl = Option.builder("C")
-				.longOpt("iceberg-catalog-implementation")
+		final Option catalogImpl = Option.builder("T")
+				.longOpt("iceberg-catalog-type")
 				.hasArg(true)
 				.required(true)
 				.desc("One of " +
@@ -550,8 +550,8 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(catalogImpl);
 
-		final Option catalogName = Option.builder("N")
-				.longOpt("iceberg-catalog-name")
+		final Option catalogName = Option.builder("C")
+				.longOpt("iceberg-catalog")
 				.hasArg(true)
 				.required(true)
 				.desc("Apache Iceberg Catalog name")
@@ -566,15 +566,15 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(catalogUri);
 
-		final Option catalogWarehouse = Option.builder("W")
-				.longOpt("iceberg-warehouse-location")
+		final Option catalogWarehouse = Option.builder("H")
+				.longOpt("iceberg-warehouse")
 				.hasArg(true)
 				.required(true)
 				.desc("Apache Iceberg warehouse location")
 				.build();
 		options.addOption(catalogWarehouse);
 
-		final Option catalogProperties = Option.builder("P")
+		final Option catalogProperties = Option.builder("R")
 				.argName("iceberg-catalog-properties")
 				.hasArgs()
 				.valueSeparator('=')
@@ -582,7 +582,7 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(catalogProperties);
 
-		final Option namespace = Option.builder("A")
+		final Option namespace = Option.builder("N")
 				.longOpt("iceberg-namespace")
 				.hasArg(true)
 				.required(false)
@@ -590,8 +590,8 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(namespace);
 
-		final Option icebergTable = Option.builder("T")
-				.longOpt("iceberg-table-name")
+		final Option icebergTable = Option.builder("t")
+				.longOpt("iceberg-table")
 				.hasArg(true)
 				.required(false)
 				.desc("Apache Iceberg table name. When not specified and <source-object> is view or table, name of <source-object> is used.")
@@ -599,14 +599,14 @@ public class Ora2Iceberg {
 		options.addOption(icebergTable);
 
 		final Option idColumns = Option.builder("I")
-				.argName("iceberg-table-id-columns")
+				.argName("iceberg-id-columns")
 				.hasArgs()
 				.desc("Apache Iceberg table identifier column names")
 				.build();
 		options.addOption(idColumns);
 
-		final Option partitionBy = Option.builder("B")
-				.argName("iceberg-table-partition-by")
+		final Option partitionBy = Option.builder("P")
+				.argName("iceberg-partition")
 				.hasArgs()
 				.valueSeparator('=')
 				.desc("Partitioning definition for table")
@@ -622,18 +622,30 @@ public class Ora2Iceberg {
 		options.addOption(maxFileSize);
 
 
-		final Option uploadMode = Option.builder("m")
+		final Option uploadMode = Option.builder("e")
 				.longOpt("upload-mode")
 				.hasArg(true)
 				.argName("mode")
 				.required(false)
-				.desc("Specifies the upload mode. Options: overwrite, append, upsert. Default is overwrite")
+				.desc("Specifies the upload mode. Options: full and incremental. Default is full")
 				.build();
 		options.addOption(uploadMode);
 
-		//TODO
-		//TODO option for column datatype remap, especially NUMBER to INT/LONG !!!
-		//TODO
+		final Option defaultNumeric = Option.builder("d")
+				.longOpt("default-number-type")
+				.hasArg(true)
+				.required(false)
+				.desc("Default NUMERIC precision/scale for ambiguous NUMBER columns. If not specified  - decimal(38,10)")
+				.build();
+		options.addOption(defaultNumeric);
+
+		final Option dataTypeMap = Option.builder("m")
+				.longOpt("data-type-map")
+				.hasArg(true)
+				.required(false)
+				.desc("Custom mappings from source types to Iceberg types. Example: \"ZONE_CONTROL:NUMBER=integer; %_ID:NUMBER=long; LOCATOR_%:NUMBER=decimal(38,0)\"")
+				.build();
+		options.addOption(dataTypeMap);
 	}
 
 	private static boolean isDriverLoaded(final String driverClass) {
