@@ -94,7 +94,7 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.apache.avro/avro
 	implementation("org.apache.avro:avro:$avroVersion")
 
-	def parquetVersion = "1.14.3"
+	def parquetVersion = "1.15.0"
 	// https://mvnrepository.com/artifact/org.apache.parquet/parquet-common
 	implementation("org.apache.parquet:parquet-common:$parquetVersion")
 	// https://mvnrepository.com/artifact/org.apache.parquet/parquet-column
