@@ -194,7 +194,7 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.projectnessie.nessie/nessie-client
 	implementation("org.projectnessie.nessie:nessie-client:$nessieVersion")
 
-	def awsVersion = "2.29.9"
+	def awsVersion = "2.29.33"
 	// https://mvnrepository.com/artifact/software.amazon.awssdk/auth
 	implementation("software.amazon.awssdk:auth:$awsVersion")
 	// https://mvnrepository.com/artifact/software.amazon.awssdk/sts
