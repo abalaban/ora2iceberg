@@ -190,7 +190,7 @@ dependencies {
 	// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
 	implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
  
-	def nessieVersion = "0.99.0"
+	def nessieVersion = "0.101.2"
 	// https://mvnrepository.com/artifact/org.projectnessie.nessie/nessie-client
 	implementation("org.projectnessie.nessie:nessie-client:$nessieVersion")
 
