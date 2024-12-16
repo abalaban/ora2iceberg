@@ -50,7 +50,7 @@ version = readVersion()
 group "solutions.a2.oracle.iceberg"
 
 dependencies {
-	def oracleJdbcVersion = "23.4.0.24.05"
+	def oracleJdbcVersion = "23.6.0.24.10"
 	// https://mvnrepository.com/artifact/com.oracle.database.jdbc/ojdbc11
 	implementation("com.oracle.database.jdbc:ojdbc11:$oracleJdbcVersion")
 	// https://mvnrepository.com/artifact/com.oracle.database.jdbc/ucp11
@@ -68,7 +68,7 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.xerial.snappy/snappy-java
 	implementation("org.xerial.snappy:snappy-java:$snappyVersion")
 
-	def zStdVersion = "1.5.6-7"
+	def zStdVersion = "1.5.6-8"
 	// https://mvnrepository.com/artifact/com.github.luben/zstd-jni
 	implementation("com.github.luben:zstd-jni:$zStdVersion")
 
@@ -94,7 +94,7 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.apache.avro/avro
 	implementation("org.apache.avro:avro:$avroVersion")
 
-	def parquetVersion = "1.14.3"
+	def parquetVersion = "1.15.0"
 	// https://mvnrepository.com/artifact/org.apache.parquet/parquet-common
 	implementation("org.apache.parquet:parquet-common:$parquetVersion")
 	// https://mvnrepository.com/artifact/org.apache.parquet/parquet-column
@@ -164,7 +164,7 @@ dependencies {
 		exclude group: 'org.slf4j'
 	}
 
-	def icebergVersion = "1.7.0"
+	def icebergVersion = "1.7.1"
 	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-core
 	implementation("org.apache.iceberg:iceberg-core:$icebergVersion")
 	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-data
@@ -182,7 +182,7 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-aws
 	implementation("org.apache.iceberg:iceberg-aws:$icebergVersion")
  
-	def jacksonVersion = "2.18.1"
+	def jacksonVersion = "2.18.2"
 	// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core
 	implementation("com.fasterxml.jackson.core:jackson-core:$jacksonVersion")
 	// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations
@@ -190,11 +190,11 @@ dependencies {
 	// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
 	implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
  
-	def nessieVersion = "0.99.0"
+	def nessieVersion = "0.101.2"
 	// https://mvnrepository.com/artifact/org.projectnessie.nessie/nessie-client
 	implementation("org.projectnessie.nessie:nessie-client:$nessieVersion")
 
-	def awsVersion = "2.29.9"
+	def awsVersion = "2.29.33"
 	// https://mvnrepository.com/artifact/software.amazon.awssdk/auth
 	implementation("software.amazon.awssdk:auth:$awsVersion")
 	// https://mvnrepository.com/artifact/software.amazon.awssdk/sts
