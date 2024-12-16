@@ -38,8 +38,9 @@ gradle dependencyCheckAnalyze
 | `--where-clause`                | `-w` | `--source-where`          | `-w` | WHERE clause to filter source data
 
 5+| *Iceberg Destination Parameters*
-| `--iceberg-catalog-implementation` | `-C` | `--iceberg-catalog-type`  | `-T` | Type of Iceberg catalog (e.g., NESSIE, REST)
+| `--iceberg-catalog-implementation`  | `-C` | `--iceberg-catalog-type`  | `-T` | Type of Iceberg catalog (e.g., NESSIE, REST)
 | `--iceberg-catalog-name`            | `-N` | `--iceberg-catalog`       | `-C` | Name of the Iceberg catalog
+| `--iceberg-catalog-uri`             | `-U` | `--iceberg-catalog-uri`   | `-U` | Specifies the URI used to connect to the Iceberg catalog. 
 | `--iceberg-warehouse-location`      | `-W` | `--iceberg-warehouse`     | `-H` | Iceberg warehouse location (e.g. S3 URL)
 | `--iceberg-catalog-properties`      | `-P` | `--iceberg-catalog-properties`    | `-R` | Additional properties for Iceberg catalog
 | `--iceberg-namespace`               | `-A` | `--iceberg-namespace`     | `-N` | Namespace for Iceberg tables (default: schema)
@@ -47,6 +48,7 @@ gradle dependencyCheckAnalyze
 | `--iceberg-table-id-columns`        | `-I` | `--iceberg-id-columns`    | `-I` | Identifier column(s) for the Iceberg table
 | `--iceberg-table-partition-by`      | `-B` | `--iceberg-partition`     | `-P` | Partitioning definition for the Iceberg table
 | `--iceberg-max-file-size`           | `-Z` | `--iceberg-max-file-size` | `-Z` | Maximum Iceberg data file size
+
 
 5+| *Additional Options*
 | `--add-rowid-to-iceberg` | `-r` | `--add-rowid-to-iceberg` | `-r` | Add ROWID pseudocolumn as ORA_ROW_ID in destination table
