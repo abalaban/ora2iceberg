@@ -53,7 +53,7 @@ gradle dependencyCheckAnalyze
 5+| *Additional Options*
 | `--add-rowid-to-iceberg` | `-r` | `--add-rowid-to-iceberg` | `-r` | Add ROWID pseudocolumn as ORA_ROW_ID in destination table
 | `--rowid-column-name`    | `-n` | `--rowid-column`         | `-q` | Custom name for the ROWID column
-| `--upload-mode`          | `-m` | `--upload-mode`          | `-e` | Upload mode: `full` (replace), `incremental` (add only), `merge` (update/delete/insert). `merge` is `not implemented yet`
+| `--upload-mode`          | `-m` | `--upload-mode`          | `-L` | Upload mode: `full` (replace), `incremental` (add only), `merge` (update/delete/insert). `merge` is `not implemented yet`
 | `--default-numeric`      | N/A  | `--default-number-type`  | `-d` | Default NUMERIC precision/scale for ambiguous NUMBER columns
 | `--data-type`            | N/A  | `--data-type-map`        | `-m` | Custom mappings from source types to Iceberg types
 | `--auto-infer-types`     | N/A  | `--auto-infer-types`     | `-f` | Automatically infer numeric types (e.g., BIGINT vs NUMERIC). `not implemented yet`

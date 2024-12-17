@@ -15,6 +15,7 @@ package solutions.a2.oracle.iceberg;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+//import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -88,6 +89,8 @@ public class Ora2Iceberg {
 	private static final String CATALOG_IMPL_GLUE = "GLUE";
 	private static final String CATALOG_IMPL_DYNAMODB = "DYNAMODB";
 	private static final Map<String, String> CATALOG_IMPL = new HashMap<>();
+	private static final String DEFAULT_CATALOG_URI = "http://glue-fake-uri:11111/api/v2";
+
 	static {
 		CATALOG_IMPL.put(CATALOG_IMPL_REST, "org.apache.iceberg.rest.RESTCatalog");
 		CATALOG_IMPL.put(CATALOG_IMPL_JDBC, "org.apache.iceberg.jdbc.JdbcCatalog");
@@ -119,9 +122,18 @@ public class Ora2Iceberg {
 			System.exit(1);
 		}
 
+		final String icebergCatalogUri = cmd.getOptionValue("iceberg-catalog-uri", DEFAULT_CATALOG_URI);
+		//Check for Catalog URI, can be blank only for the Glue
+		if (!StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type")).equals(CATALOG_IMPL_GLUE) && !cmd.hasOption("iceberg-catalog-uri")) {
+			LOGGER.error("Error: The --iceberg-catalog-uri (-U) parameter cannot be empty when using the \n" +
+					"catalog type --iceberg-catalog-type(-T) {}). Please provide a valid URI for the catalog server",
+					StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type")));
+			System.exit(1);
+		}
+
 		final Map<String, String> catalogProps = new HashMap<>();
 		catalogProps.put(CatalogProperties.WAREHOUSE_LOCATION, cmd.getOptionValue("iceberg-warehouse"));
-		catalogProps.put(CatalogProperties.URI, cmd.getOptionValue("iceberg-catalog-uri"));
+		catalogProps.put(CatalogProperties.URI, icebergCatalogUri);
 		switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type"))) {
 			case CATALOG_IMPL_REST:
 			case CATALOG_IMPL_JDBC:
@@ -147,12 +159,12 @@ public class Ora2Iceberg {
 				} catch (ClassNotFoundException cnfe) {
 					LOGGER.error("Unable to load class {} specified as an Apache Iceberg catalog implementation!\n" +
 									"The following exception occured:\n{}\n",
-							cmd.getOptionValue("iceberg-catalog-uri"), cnfe.getMessage());
+							icebergCatalogUri, cnfe.getMessage());
 					System.exit(1);
 				}
 		}
-		catalogProps.put(CatalogProperties.URI, cmd.getOptionValue("iceberg-catalog-uri"));
-		final String[] params = cmd.getOptionValues("P");
+		catalogProps.put(CatalogProperties.URI, icebergCatalogUri);
+		final String[] params = cmd.getOptionValues("R");
 		if (params != null && params.length > 0) {
 			if (params.length % 2 == 0) {
 				for (int i = 0; i < params.length; i+=2) {
@@ -352,6 +364,18 @@ public class Ora2Iceberg {
 					icebergTable = TableIdentifier.of(namespace, icebergTableName);
 					break;
 			}
+
+
+//          //Keep to Debug Catalog Properties
+//			for (Field field : catalog.getClass().getDeclaredFields()) {
+//				field.setAccessible(true);
+//                try {
+//                    System.out.println(field.getName() + " = " + field.get(catalog));
+//                } catch (IllegalAccessException e) {
+//                    throw new RuntimeException(e);
+//                }
+//            }
+
 
 				String uploadModeValue = cmd.getOptionValue("upload-mode", UPLOAD_DEFAULT_MODE);
 
@@ -564,7 +588,7 @@ public class Ora2Iceberg {
 		final Option catalogUri = Option.builder("U")
 				.longOpt("iceberg-catalog-uri")
 				.hasArg(true)
-				.required(true)
+				.required(false)
 				.desc("Apache Iceberg Catalog URI")
 				.build();
 		options.addOption(catalogUri);
@@ -625,7 +649,7 @@ public class Ora2Iceberg {
 		options.addOption(maxFileSize);
 
 
-		final Option uploadMode = Option.builder("e")
+		final Option uploadMode = Option.builder("L")
 				.longOpt("upload-mode")
 				.hasArg(true)
 				.argName("mode")
