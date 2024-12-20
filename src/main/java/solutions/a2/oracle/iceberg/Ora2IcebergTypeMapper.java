@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class OracleToIcebergTypeMapper {
+public class Ora2IcebergTypeMapper {
 
     private static final Map<String, String> exactOverrides = new HashMap<>();
     private static final List<PatternOverride> patternOverrides = new ArrayList<>();
@@ -112,7 +112,7 @@ public class OracleToIcebergTypeMapper {
     /**
      * Constructor that takes column metadata as input.
      */
-    public OracleToIcebergTypeMapper(String columnName, int jdbcType, int precision, int scale) {
+    public Ora2IcebergTypeMapper(String columnName, int jdbcType, int precision, int scale) {
         this.columnName = columnName;
         this.originalJdbcType = jdbcType;
         this.originalPrecision = precision;

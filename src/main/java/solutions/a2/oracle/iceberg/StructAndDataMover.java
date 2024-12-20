@@ -155,9 +155,9 @@ public class StructAndDataMover {
 			final Set<Integer> pkIds = new HashSet<>();
 			int columnId = 0;
 
-			if (dataTypeMap != null && !dataTypeMap.isEmpty()) {OracleToIcebergTypeMapper.configureOverrides(dataTypeMap);}
+			if (dataTypeMap != null && !dataTypeMap.isEmpty()) {Ora2IcebergTypeMapper.configureOverrides(dataTypeMap);}
 
-			OracleToIcebergTypeMapper.configureDefaultNumberFallback(defaultNumeric);
+			Ora2IcebergTypeMapper.configureDefaultNumberFallback(defaultNumeric);
 
 			final boolean idColumnsPresent = idColumnNames != null && !idColumnNames.isEmpty();
 			final ResultSet columns = dbMetaData.getColumns(sourceCatalog, sourceSchema, sourceObject, "%");
@@ -171,7 +171,7 @@ public class StructAndDataMover {
 				final Type type;
 				final int mappedType;
 
-				OracleToIcebergTypeMapper mapper = new OracleToIcebergTypeMapper(columnName, jdbcType, precision, scale);
+				Ora2IcebergTypeMapper mapper = new Ora2IcebergTypeMapper(columnName, jdbcType, precision, scale);
 
 				mappedType = mapper.getMappedType();
 				type = mapper.getType();
