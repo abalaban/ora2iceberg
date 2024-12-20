@@ -170,62 +170,6 @@ public class StructAndDataMover {
 				boolean addColumn = false;
 				final Type type;
 				final int mappedType;
-//TODO Testing before removal - Default Number and Override
-//				switch (jdbcType) {
-//					case java.sql.Types.BOOLEAN:
-//						type = Types.BooleanType.get();
-//						mappedType = java.sql.Types.BOOLEAN;
-//						addColumn = true;
-//						break;
-//					case java.sql.Types.NUMERIC:
-//						if (scale == 0 && precision < 10) {
-//							mappedType = java.sql.Types.INTEGER;
-//							type = Types.IntegerType.get();
-//						} else if (scale == 0 && precision < 19) {
-//							mappedType = java.sql.Types.BIGINT;
-//							type = Types.LongType.get();
-//						} else {
-//							mappedType = java.sql.Types.NUMERIC;
-//							//TODO
-//							//TODO
-//							//TODO
-//							type = Types.DecimalType.of(
-//									precision <= 0 ? 38 : precision,
-//									scale < 0 ? 19: scale);
-//						}
-//						addColumn = true;
-//						break;
-//					case OracleTypes.BINARY_FLOAT:
-//						mappedType = java.sql.Types.FLOAT;
-//						type = Types.FloatType.get();
-//						addColumn = true;
-//						break;
-//					case OracleTypes.BINARY_DOUBLE:
-//						mappedType = java.sql.Types.DOUBLE;
-//						type = Types.DoubleType.get();
-//						addColumn = true;
-//						break;
-//					case java.sql.Types.VARCHAR:
-//						mappedType = java.sql.Types.VARCHAR;
-//						type = Types.StringType.get();
-//						addColumn = true;
-//						break;
-//					case java.sql.Types.TIMESTAMP:
-//						mappedType = java.sql.Types.TIMESTAMP;
-//						type = Types.TimestampType.withoutZone();
-//						addColumn = true;
-//						break;
-//					case OracleTypes.TIMESTAMPLTZ:
-//					case OracleTypes.TIMESTAMPTZ:
-//						mappedType = java.sql.Types.TIMESTAMP_WITH_TIMEZONE;
-//						type = Types.TimestampType.withZone();
-//						addColumn = true;
-//						break;
-//					default:
-//						mappedType = Integer.MAX_VALUE;
-//						type = null;
-//						LOGGER.warn("Skipping column {} with jdbcType {}", columnName, jdbcType);
-//				}
 
 				OracleToIcebergTypeMapper mapper = new OracleToIcebergTypeMapper(columnName, jdbcType, precision, scale);
 
@@ -242,16 +186,8 @@ public class StructAndDataMover {
 				if (addColumn) {
 					final int[] typeAndScale = new int[INFO_SIZE];
 					typeAndScale[TYPE_POS] = mappedType;
-					//TODO - precision! Fixed
 					typeAndScale[PRECISION_POS] = finalPrecision;
-//TODO Testing before removal - Default Number and Override
-//					typeAndScale[PRECISION_POS] = mappedType != java.sql.Types.NUMERIC ? Integer.MIN_VALUE :
-//							precision <= 0 ? 38 : precision;
-					//TODO - scale! Fixed
 					typeAndScale[SCALE_POS] = finalScale;
-//TODO Testing before removal - Default Number and Override
-//					typeAndScale[SCALE_POS] = mappedType != java.sql.Types.NUMERIC ? Integer.MIN_VALUE :
-//							scale < 0 ? 19: scale;
 					typeAndScale[NULL_POS] = nullable ? 1 : 0;
 					columnsMap.put(columnName, typeAndScale);
 					columnId++;
@@ -385,7 +321,6 @@ public class StructAndDataMover {
 					targetFileSize) {
 				@Override
 				protected PartitionKey partition(Record record) {
-//					partitionKey.partition(record);
 					partitionKey.partition(recordWrapper.wrap(record));
 					return partitionKey;
 				}
