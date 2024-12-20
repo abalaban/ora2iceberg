@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.iceberg.PartitionSpec;
@@ -41,6 +42,7 @@ import org.apache.iceberg.data.GenericAppenderFactory;
 import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.InternalRecordWrapper;
 import org.apache.iceberg.data.Record;
+import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.io.OutputFileFactory;
 import org.apache.iceberg.io.PartitionedFanoutWriter;
 import org.apache.iceberg.types.Type;
@@ -84,8 +86,8 @@ public class StructAndDataMover {
 	private final String whereClause;
 	private final String defaultNumeric;
 	private final Map<String, int[]> columnsMap;
-	private final Table table;
 	private final long targetFileSize;
+	private Table table;
 
 	private static String jdbcTypeToString(int jdbcType) {
 		switch (jdbcType) {
@@ -328,13 +330,34 @@ public class StructAndDataMover {
 				    spec = PartitionSpec.unpartitioned();
 				}
 
-				if (!icebergTableExists) {
-				    table = catalog.createTable(
-				        icebergTable,
-				        schema,
-				        spec);
-				} else {
-				    table = catalog.loadTable(icebergTable);
+				try {
+					if (!icebergTableExists) {
+					    table = catalog.createTable(
+					        icebergTable,
+					        schema,
+					        spec);
+					} else {
+					    table = catalog.loadTable(icebergTable);
+					}
+				} catch (NoSuchNamespaceException nsne) {
+					if (StringUtils.endsWith(catalog.getClass().getName(), "HiveCatalog")) {
+						LOGGER.error(
+							"\n=====================\n" +
+							"Hive database '{}' does not exists. Please create it using\n" +
+							"\tCREATE DATABASE [IF NOT EXISTS] {} [DATABASE-OPTIONS];\n" +
+							"Full error stack:\n{}" +
+							"\n=====================\n",
+							icebergTable.namespace().toString(), icebergTable.namespace().toString(),
+							ExceptionUtils.getFullStackTrace(nsne));
+					} else {
+						LOGGER.error(
+							"\n=====================\n" +
+							"org.apache.iceberg.exceptions.NoSuchNamespaceException!\n" +
+							"Full error stack:\n{}" +
+							"\n=====================\n",
+							ExceptionUtils.getFullStackTrace(nsne));
+					}
+					throw nsne;
 				}
 		} else {
 			//TODO
@@ -431,10 +454,10 @@ public class StructAndDataMover {
 											}
 											LOGGER.warn(
 													"\n=====================\n" +
-															"Precision {} of Oracle NUMBER column {} with value '{}' is greater than allowed precision {}!\n" +
-															"Dump value of NUMBER column ='{}'\n" +
-															"Setting value to {}!" +
-															"\n=====================\n",
+													"Precision {} of Oracle NUMBER column {} with value '{}' is greater than allowed precision {}!\n" +
+													"Dump value of NUMBER column ='{}'\n" +
+													"Setting value to {}!" +
+													"\n=====================\n",
 													bd.precision(), entry.getKey(),
 													oraNum.stringValue(), entry.getValue()[PRECISION_POS],
 													oraNumFmt.toString(),
