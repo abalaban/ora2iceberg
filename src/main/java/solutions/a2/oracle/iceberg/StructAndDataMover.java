@@ -253,11 +253,13 @@ public class StructAndDataMover {
 							specBuilder.truncate(partFieldTemp, partParamTemp);
 							break;
 						default:
-							LOGGER.error("Invalid partition type '{}' specified!\n" +
-		 								 "Supported partition types are: `identity`, `year`, `month`, `day`, `bucket`, `truncate`.\n" +
-										 "Please verify the partition type and try again.\n",
-									partTypeTemp.toLowerCase());
-							// Should we keep original case / upper / lower??
+							LOGGER.error(
+									"\n=====================\n" +
+									"Invalid partition type '{}' specified!\n" +
+									"Supported partition types are: `identity`, `year`, `month`, `day`, `bucket`, `truncate`.\n" +
+									"Please verify the partition type and try again." +
+									"\n=====================\n",
+									partTypeTemp);
 							System.exit(1);
 					}
 				}
