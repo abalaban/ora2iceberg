@@ -23,43 +23,53 @@ To ensure no security vulnerabilities in the dependency libraries, run the follo
 gradle dependencyCheckAnalyze
 ----
 
-=== Parameters
-:icons:
-[cols="2,1,2,1,3", options="header"]
+=== Source Connection Parameters
+
+[cols="1,2,4,3", options="header"]
 |===
-| Old Parameter                      | Old Short | New Parameter            | New Short | Short Description
+| Short | Long | Explanation | Example
 
-5+| *Source Connection Parameters*
-| `--source-jdbc-url`             | `-j` | `--source-jdbc-url`       | `-j` | JDBC URL of the source database connection
-| `--source-user`                 | `-u` | `--source-user`           | `-u` | Username for source connection
-| `--source-password`             | `-p` | `--source-password`       | `-p` | Password for source connection
-| `--source-schema`               | `-s` | `--source-schema`         | `-s` | Source schema name (defaults to source user)
-| `--source-object`               | `-o` | `--source-object`         | `-o` | Table/view name or SQL SELECT for source data
-| `--where-clause`                | `-w` | `--source-where`          | `-w` | WHERE clause to filter source data
-
-5+| *Iceberg Destination Parameters*
-| `--iceberg-catalog-implementation`  | `-C` | `--iceberg-catalog-type`  | `-T` | Type of Iceberg catalog (e.g., NESSIE, REST)
-| `--iceberg-catalog-name`            | `-N` | `--iceberg-catalog`       | `-C` | Name of the Iceberg catalog
-| `--iceberg-catalog-uri`             | `-U` | `--iceberg-catalog-uri`   | `-U` | Specifies the URI used to connect to the Iceberg catalog. 
-| `--iceberg-warehouse-location`      | `-W` | `--iceberg-warehouse`     | `-H` | Iceberg warehouse location (e.g. S3 URL)
-| `--iceberg-catalog-properties`      | `-P` | `--iceberg-catalog-properties`    | `-R` | Additional properties for Iceberg catalog
-| `--iceberg-namespace`               | `-A` | `--iceberg-namespace`     | `-N` | Namespace for Iceberg tables (default: schema)
-| `--iceberg-table-name`              | `-T` | `--iceberg-table`         | `-t` | Iceberg table name (defaults to source object)
-| `--iceberg-table-id-columns`        | `-I` | `--iceberg-id-columns`    | `-I` | Identifier column(s) for the Iceberg table
-| `--iceberg-table-partition-by`      | `-B` | `--iceberg-partition`     | `-P` | Partitioning definition for the Iceberg table
-| `--iceberg-max-file-size`           | `-Z` | `--iceberg-max-file-size` | `-Z` | Maximum Iceberg data file size
-
-
-5+| *Additional Options*
-| `--add-rowid-to-iceberg` | `-r` | `--add-rowid-to-iceberg` | `-r` | Add ROWID pseudocolumn as ORA_ROW_ID in destination table
-| `--rowid-column-name`    | `-n` | `--rowid-column`         | `-q` | Custom name for the ROWID column
-| `--upload-mode`          | `-m` | `--upload-mode`          | `-e` | Upload mode: `full` (replace), `incremental` (add only), `merge` (update/delete/insert). `merge` is `not implemented yet`
-| `--default-numeric`      | N/A  | `--default-number-type`  | `-d` | Default NUMERIC precision/scale for ambiguous NUMBER columns
-| `--data-type`            | N/A  | `--data-type-map`        | `-m` | Custom mappings from source types to Iceberg types
-| `--auto-infer-types`     | N/A  | `--auto-infer-types`     | `-f` | Automatically infer numeric types (e.g., BIGINT vs NUMERIC). `not implemented yet`
+| `-j` | `--source-jdbc-url` | Oracle JDBC URL for the source connection. This parameter is required. | `jdbc:oracle:thin:@localhost:1521:xe`
+| `-u` | `--source-user` | Oracle username for the source connection. | `system`
+| `-p` | `--source-password` | Password for the source Oracle connection. | `password123`
+| `-s` | `--source-schema` | Source schema name. If not specified, the value of `<source-user>` is used. | `HR`
+| `-o` | `--source-object` | Name of the source table, view, or SQL `SELECT` query. *SQL `SELECT` is not implemented yet.* | `employees` or `SELECT * FROM employees WHERE department_id = 10`
+| `-w` | `--where-clause` | Optional `WHERE` clause for the `<source-object>`. Valid only if `<source-object>` points to a table or view. | `WHERE salary > 50000`
 |===
 
+=== Iceberg Destination Parameters
 
+[cols="1,2,4,3", options="header"]
+|===
+| Short | Long | Explanation | Example
+
+| `-T` | `--iceberg-catalog-type` | Type of Iceberg catalog. Can be predefined (e.g., REST, JDBC, HADOOP) or a fully qualified class name. | `REST`
+| `-C` | `--iceberg-catalog` | Name of the Apache Iceberg catalog. | `MyCatalog`
+| `-U` | `--iceberg-catalog-uri` | URI for the Apache Iceberg catalog. | `http://localhost:8080`
+| `-H` | `--iceberg-warehouse` | Location of the Apache Iceberg warehouse. | `/path/to/warehouse`
+| `-N` | `--iceberg-namespace` | Namespace for the Iceberg catalog. Defaults to the source schema. | `db_namespace`
+| `-t` | `--iceberg-table` | Name of the destination Iceberg table. Defaults to the source object name for tables/views. | `iceberg_table_name`
+| `-P` | `--iceberg-partition` | Partitioning definitions for the Iceberg table. | `columnName=YEAR` or `columnName=BUCKET,10`
+| `-L` | `--upload-mode` | Upload mode: `full`, `incremental`, or `merge`. *Merge is not implemented yet.* | `full`
+|===
+
+=== Additional Options
+
+[cols="1,2,4,3", options="header"]
+|===
+| Short | Long | Explanation | Example
+
+| `-f` | `--auto-infer-types` | Automatically infer numeric types (e.g., BIGINT vs NUMERIC). *Not implemented yet.* | `-f`
+| `-d` | `--default-number-type` | Default numeric precision/scale for ambiguous `NUMBER` columns. Defaults to `decimal(38,10)`. | `decimal(10,2)`
+| `-m` | `--data-type-map` | Custom mappings from source data types to Iceberg types. | `"COLUMN_NAME:NUMBER=integer; PATTERN%:NUMBER=decimal(20,0)"`
+|===
+
+
+=== More Information
+
+For more details, documentation, and updates, visit the official website:
+
+https://ora2iceberg.app/
 
 == Authors
 **Aleksej Veremeev** - *Initial work* - http://a2-solutions.eu/[A2 Rešitve d.o.o.]
