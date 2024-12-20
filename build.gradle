@@ -223,6 +223,8 @@ dependencies {
 	implementation("software.amazon.awssdk:sts:$awsVersion")
 	// https://mvnrepository.com/artifact/software.amazon.awssdk/s3
 	implementation("software.amazon.awssdk:s3:$awsVersion")
+	// https://mvnrepository.com/artifact/software.amazon.awssdk/s3tables
+	implementation("software.amazon.awssdk:s3tables:$awsVersion")
 	// https://mvnrepository.com/artifact/software.amazon.awssdk/dynamodb
 	implementation("software.amazon.awssdk:dynamodb:$awsVersion")
 	// https://mvnrepository.com/artifact/software.amazon.awssdk/glue
