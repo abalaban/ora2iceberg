@@ -181,6 +181,8 @@ dependencies {
 	implementation("org.apache.iceberg:iceberg-nessie:$icebergVersion")
 	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-aws
 	implementation("org.apache.iceberg:iceberg-aws:$icebergVersion")
+	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-snowflake
+	implementation("org.apache.iceberg:iceberg-snowflake:$icebergVersion")
  
 	def jacksonVersion = "2.18.2"
 	// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core
