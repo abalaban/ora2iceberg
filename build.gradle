@@ -194,6 +194,28 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.projectnessie.nessie/nessie-client
 	implementation("org.projectnessie.nessie:nessie-client:$nessieVersion")
 
+	def hiveVersion = "3.1.3"
+	// https://mvnrepository.com/artifact/org.apache.hive/hive-metastore
+	implementation("org.apache.hive:hive-metastore:$hiveVersion") {
+		exclude group: 'co.cask.tephra'
+		exclude group: 'com.zaxxer'
+		exclude group: 'io.netty'
+		exclude group: 'jakarta.activation'
+		exclude group: 'javax.servlet'
+		exclude group: 'javax.servlet.jsp'
+		exclude group: 'javax.xml.bind'
+		exclude group: 'log4j'
+		exclude group: 'org.apache.avro'
+		exclude group: 'org.apache.hbase'
+		exclude group: 'org.apache.hadoop'
+		exclude group: 'org.apache.httpcomponents'
+		exclude group: 'org.apache.parquet', module: 'parquet-hadoop-bundle'
+		exclude group: 'org.apache.zookeeper'
+		exclude group: 'org.eclipse.jetty'
+		exclude group: 'org.eclipse.jetty.websocket'
+		exclude group: 'org.slf4j'
+	}
+
 	def awsVersion = "2.29.33"
 	// https://mvnrepository.com/artifact/software.amazon.awssdk/auth
 	implementation("software.amazon.awssdk:auth:$awsVersion")
