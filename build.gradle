@@ -218,7 +218,7 @@ dependencies {
 		exclude group: 'org.slf4j'
 	}
 
-	def awsVersion = "2.29.33"
+	def awsVersion = "2.29.39"
 	// https://mvnrepository.com/artifact/software.amazon.awssdk/auth
 	implementation("software.amazon.awssdk:auth:$awsVersion")
 	// https://mvnrepository.com/artifact/software.amazon.awssdk/sts
