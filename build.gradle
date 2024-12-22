@@ -60,6 +60,10 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.postgresql/postgresql
 	implementation("org.postgresql:postgresql:$pgJdbcVersion")
 
+	def sqLiteJdbcVersion = "3.47.1.0"
+	// https://mvnrepository.com/artifact/org.xerial/sqlite-jdbc
+	implementation("org.xerial:sqlite-jdbc:$sqLiteJdbcVersion")
+
 	def lZ4Version = "1.8.0"
 	// https://mvnrepository.com/artifact/org.lz4/lz4-java
 	implementation("org.lz4:lz4-java:$lZ4Version")
