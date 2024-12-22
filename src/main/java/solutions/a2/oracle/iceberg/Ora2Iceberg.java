@@ -87,9 +87,9 @@ public class Ora2Iceberg {
 	private static final String CATALOG_IMPL_HIVE = "HIVE";
 	private static final String CATALOG_IMPL_NESSIE = "NESSIE";
 	private static final String CATALOG_IMPL_GLUE = "GLUE";
+	private static final String CATALOG_IMPL_S3TABLES = "S3TABLES";
 	private static final String CATALOG_IMPL_DYNAMODB = "DYNAMODB";
 	private static final Map<String, String> CATALOG_IMPL = new HashMap<>();
-	private static final String DEFAULT_CATALOG_URI = "http://glue-fake-uri:11111/api/v2";
 
 	static {
 		CATALOG_IMPL.put(CATALOG_IMPL_REST, "org.apache.iceberg.rest.RESTCatalog");
@@ -98,8 +98,11 @@ public class Ora2Iceberg {
 		CATALOG_IMPL.put(CATALOG_IMPL_HIVE, "org.apache.iceberg.hive.HiveCatalog");
 		CATALOG_IMPL.put(CATALOG_IMPL_NESSIE, "org.apache.iceberg.nessie.NessieCatalog");
 		CATALOG_IMPL.put(CATALOG_IMPL_GLUE, "org.apache.iceberg.aws.glue.GlueCatalog");
+		CATALOG_IMPL.put(CATALOG_IMPL_S3TABLES, "software.amazon.s3tables.iceberg.S3TablesCatalog");
 		CATALOG_IMPL.put(CATALOG_IMPL_DYNAMODB, "org.apache.iceberg.aws.dynamodb.DynamoDbCatalog");
 	}
+
+	private static final String DEFAULT_CATALOG_URI = "http://glue-fake-uri:11111/api/v2";
 
 	private static final String DRIVER_POSTGRESQL = "org.postgresql.Driver";
 	private static final String PREFIX_POSTGRESQL = "jdbc:postgresql:";
@@ -141,6 +144,7 @@ public class Ora2Iceberg {
 			case CATALOG_IMPL_HIVE:
 			case CATALOG_IMPL_NESSIE:
 			case CATALOG_IMPL_GLUE:
+			case CATALOG_IMPL_S3TABLES:
 			case CATALOG_IMPL_DYNAMODB:
 				catalogProps.put(CatalogProperties.CATALOG_IMPL,
 						CATALOG_IMPL.get(StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type"))));
