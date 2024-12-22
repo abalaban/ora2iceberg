@@ -106,6 +106,8 @@ public class Ora2Iceberg {
 
 	private static final String DRIVER_POSTGRESQL = "org.postgresql.Driver";
 	private static final String PREFIX_POSTGRESQL = "jdbc:postgresql:";
+	private static final String DRIVER_SQLITE = "org.sqlite.JDBC";
+	private static final String PREFIX_SQLITE = "jdbc:sqlite:";
 
 	public static void main(String[] argv) {
 		LOGGER.info("Starting...");
@@ -180,11 +182,17 @@ public class Ora2Iceberg {
 				System.exit(1);
 			}
 		}
-		if (StringUtils.equals(CATALOG_IMPL_JDBC, StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type"))) &&
-				StringUtils.startsWith(catalogProps.get(CatalogProperties.URI), PREFIX_POSTGRESQL)) {
-			if (!isDriverLoaded(DRIVER_POSTGRESQL)) {
+		if (StringUtils.equals(CATALOG_IMPL_JDBC, StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type"))))
+		{
+			if (StringUtils.startsWith(catalogProps.get(CatalogProperties.URI), PREFIX_POSTGRESQL) &&
+					!isDriverLoaded(DRIVER_POSTGRESQL)) {
 				try {
 					Class.forName(DRIVER_POSTGRESQL);
+				} catch (ClassNotFoundException cnf) { }
+			} else if (StringUtils.startsWith(catalogProps.get(CatalogProperties.URI), PREFIX_SQLITE) &&
+					!isDriverLoaded(DRIVER_SQLITE)) {
+				try {
+					Class.forName(DRIVER_SQLITE);
 				} catch (ClassNotFoundException cnf) { }
 			}
 		}
