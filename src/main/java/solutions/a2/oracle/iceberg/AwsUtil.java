@@ -75,10 +75,11 @@ public class AwsUtil {
 		return false;
 	}
 
-	static boolean checkAndCreateS3TablesDbIfMissed(final String dbName) throws IOException {
+	static boolean checkAndCreateS3TablesDbIfMissed(final String dbName, final String arn) throws IOException {
 		try {
 			final S3TablesClient s3Tables = S3TablesClient.builder().build();
 			final GetNamespaceRequest nsRequest = GetNamespaceRequest.builder()
+					.tableBucketARN(arn)
 					.namespace(dbName)
 					.build();
 			GetNamespaceResponse response = null;

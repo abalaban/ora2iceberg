@@ -402,7 +402,9 @@ public class Ora2Iceberg {
 					icebergTable = TableIdentifier.of(
 							StringUtils.lowerCase(s3TablesDb), StringUtils.lowerCase(icebergTableName));
 					try {
-						if (!AwsUtil.checkAndCreateS3TablesDbIfMissed(icebergTable.namespace().toString())) {
+						if (!AwsUtil.checkAndCreateS3TablesDbIfMissed(
+								icebergTable.namespace().toString(),
+								CatalogProperties.WAREHOUSE_LOCATION)) {
 							LOGGER.error(
 									"\n=====================\n" +
 									"Unable to check or create AWS S3 Tables namespace {}!" +
