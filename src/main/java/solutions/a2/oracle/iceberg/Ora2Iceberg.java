@@ -111,6 +111,8 @@ public class Ora2Iceberg {
 
 	private static final String OPT_ICEBERG_PARTITION = "iceberg-partition";
 	private static final String OPT_ICEBERG_PARTITION_SHORT = "P";
+	private static final String OPT_ICEBERG_CATALOG_IMPL = "iceberg-catalog-type";
+	private static final String OPT_ICEBERG_CATALOG_IMPL_SHORT =  "T";
 
 	public static void main(String[] argv) {
 		LOGGER.info("Starting...");
@@ -132,17 +134,22 @@ public class Ora2Iceberg {
 
 		final String icebergCatalogUri = cmd.getOptionValue("iceberg-catalog-uri", DEFAULT_CATALOG_URI);
 		//Check for Catalog URI, can be blank only for the Glue
-		if (!StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type")).equals(CATALOG_IMPL_GLUE) && !cmd.hasOption("iceberg-catalog-uri")) {
-			LOGGER.error("Error: The --iceberg-catalog-uri (-U) parameter cannot be empty when using the \n" +
-					"catalog type --iceberg-catalog-type(-T) {}). Please provide a valid URI for the catalog server",
-					StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type")));
+		if (!StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT)).equals(CATALOG_IMPL_GLUE) &&
+				!cmd.hasOption("iceberg-catalog-uri")) {
+			LOGGER.error(
+					"\n=====================\n" +
+					"The --iceberg-catalog-uri (-U) parameter cannot be empty when using the \n" +
+					"catalog type --{}(-{}) set to {}). Please provide a valid URI for the catalog server" +
+					"\n=====================\n",
+					OPT_ICEBERG_CATALOG_IMPL, OPT_ICEBERG_CATALOG_IMPL_SHORT,
+					StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT)));
 			System.exit(1);
 		}
 
 		final Map<String, String> catalogProps = new HashMap<>();
 		catalogProps.put(CatalogProperties.WAREHOUSE_LOCATION, cmd.getOptionValue("iceberg-warehouse"));
 		catalogProps.put(CatalogProperties.URI, icebergCatalogUri);
-		switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type"))) {
+		switch (StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT))) {
 			case CATALOG_IMPL_REST:
 			case CATALOG_IMPL_JDBC:
 			case CATALOG_IMPL_HADOOP:
@@ -152,19 +159,22 @@ public class Ora2Iceberg {
 			case CATALOG_IMPL_S3TABLES:
 			case CATALOG_IMPL_DYNAMODB:
 				catalogProps.put(CatalogProperties.CATALOG_IMPL,
-						CATALOG_IMPL.get(StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type"))));
+						CATALOG_IMPL.get(StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT))));
 				break;
 			default:
 				try {
-					final Class<?> clazz = Class.forName(cmd.getOptionValue("iceberg-catalog-type"));
+					final Class<?> clazz = Class.forName(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT));
 					if (!clazz.isAssignableFrom(BaseMetastoreCatalog.class)) {
-						LOGGER.error("Class {} must extend {}!",
+						LOGGER.error(
+								"\n=====================\n" +
+								"Class {} must extend {}!" +
+								"\n=====================\n",
 								clazz.getCanonicalName(),
 								BaseMetastoreCatalog.class.getCanonicalName());
 						System.exit(1);
 					}
 					catalogProps.put(CatalogProperties.CATALOG_IMPL,
-							cmd.getOptionValue("iceberg-catalog-type"));
+							cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT));
 				} catch (ClassNotFoundException cnfe) {
 					LOGGER.error(
 							"\n=====================\n" +
@@ -191,7 +201,7 @@ public class Ora2Iceberg {
 				System.exit(1);
 			}
 		}
-		if (StringUtils.equals(CATALOG_IMPL_JDBC, StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type"))))
+		if (StringUtils.equals(CATALOG_IMPL_JDBC, StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT))))
 		{
 			if (StringUtils.startsWith(catalogProps.get(CatalogProperties.URI), PREFIX_POSTGRESQL) &&
 					!isDriverLoaded(DRIVER_POSTGRESQL)) {
@@ -347,7 +357,7 @@ public class Ora2Iceberg {
 			}
 
 			final TableIdentifier icebergTable;
-			switch (StringUtils.upperCase(cmd.getOptionValue("iceberg-catalog-type"))) {
+			switch (StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT))) {
 				case CATALOG_IMPL_GLUE:
 					final String glueDb = StringUtils.isBlank(cmd.getOptionValue("iceberg-namespace")) ?
 							sourceSchema : cmd.getOptionValue("iceberg-namespace");
@@ -592,8 +602,8 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(rowIdColumnName);
 
-		final Option catalogImpl = Option.builder("T")
-				.longOpt("iceberg-catalog-type")
+		final Option catalogImpl = Option.builder(OPT_ICEBERG_CATALOG_IMPL_SHORT)
+				.longOpt(OPT_ICEBERG_CATALOG_IMPL)
 				.hasArg(true)
 				.required(true)
 				.desc("One of " +
