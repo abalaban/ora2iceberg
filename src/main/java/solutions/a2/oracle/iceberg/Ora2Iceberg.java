@@ -109,6 +109,9 @@ public class Ora2Iceberg {
 	private static final String DRIVER_SQLITE = "org.sqlite.JDBC";
 	private static final String PREFIX_SQLITE = "jdbc:sqlite:";
 
+	private static final String OPT_ICEBERG_PARTITION = "iceberg-partition";
+	private static final String OPT_ICEBERG_PARTITION_SHORT = "P";
+
 	public static void main(String[] argv) {
 		LOGGER.info("Starting...");
 
@@ -462,53 +465,51 @@ public class Ora2Iceberg {
 				maxFileSize = MAX_FILE_SIZE;
 			}
 
-			String defaultNumeric = cmd.getOptionValue("default-number-type",DEFAULT_NUMBER_FORMAT);
+			String defaultNumeric = cmd.getOptionValue("default-number-type", DEFAULT_NUMBER_FORMAT);
 
 			final List<Triple<String, String, Integer>> partColumnNames;
-
-			if (cmd.getOptionValues("P") == null || cmd.getOptionValues("P").length == 0) {
+			if (cmd.getOptionValues(OPT_ICEBERG_PARTITION_SHORT) == null ||
+					cmd.getOptionValues(OPT_ICEBERG_PARTITION_SHORT).length == 0) {
 				partColumnNames = null;
 			} else {
 				partColumnNames = new ArrayList<>();
 				final String[] partParams = cmd.getOptionValues("P");
 
 				if (partParams.length % 2 == 0) {
-					for (int i = 0; i < partParams.length; i+=2) {
+					for (int i = 0; i < partParams.length; i += 2) {
 						final String columnName = partParams[i];
 						String partColumnType = partParams[i + 1];
 						String partThirdParamTemp;
 						int partThirdParam = -1;
 
 						if (StringUtils.contains(partColumnType, ",")) {
-
 							partThirdParamTemp = StringUtils.substringAfterLast(partColumnType, ",");
 							partColumnType = StringUtils.substringBefore(partColumnType, ",");
-
-							// Extract the substring after the last comma and trying to parse it as an integer
 							try {
 								partThirdParam = Integer.parseInt(partThirdParamTemp);
 
 							} catch (NumberFormatException nfe) {
-								LOGGER.error("Invalid value {} after the comma in partition type '{}' specified!\n" +
-												"The value after the comma should be a valid integer.\n" +
-												"Please verify the partition type parameter and try again.\n",
-										partThirdParamTemp,
-										partColumnType);
-
+								LOGGER.error(
+										"\n=====================\n" +
+										"Invalid value {} after the comma in partition type '{}' specified!\n" +
+										"The value after the comma should be a valid integer.\n" +
+										"Please verify the partition type parameter and try again." +
+										"\n=====================\n",
+										partThirdParamTemp, partColumnType);
 								System.exit(1);
 							}
 						}
 						partColumnNames.add(new ImmutableTriple<>(columnName, partColumnType, partThirdParam));
 					}
-					} else {
-						LOGGER.error(
+				} else {
+					LOGGER.error(
 								"\n=====================\n" +
 								"Unable to parse from command line values of Apache Iceberg Catalog properties!\n" +
 								"Please check parameters!" +
 								"\n=====================\n");
 						System.exit(1);
-					}
 				}
+			}
 
 			final StructAndDataMover sdm = new StructAndDataMover(
 					dbMetaData, sourceSchema, sourceObject, whereClause, isTableOrView, icebergTableExists,
@@ -662,8 +663,8 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(idColumns);
 
-		final Option partitionBy = Option.builder("P")
-				.longOpt("iceberg-partition")
+		final Option partitionBy = Option.builder(OPT_ICEBERG_PARTITION_SHORT)
+				.longOpt(OPT_ICEBERG_PARTITION)
 				.hasArgs()
 				.valueSeparator('=')
 				.desc("Partitioning definition for table")
