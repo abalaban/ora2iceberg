@@ -395,41 +395,50 @@ public class Ora2Iceberg {
 					break;
 			}
 
-				String uploadModeValue = cmd.getOptionValue("upload-mode", UPLOAD_DEFAULT_MODE);
+			String uploadModeValue = cmd.getOptionValue("upload-mode", UPLOAD_DEFAULT_MODE);
+			boolean icebergTableExists = catalog.tableExists(icebergTable);
 
-			    boolean icebergTableExists = catalog.tableExists(icebergTable);
-
-				switch (uploadModeValue.toLowerCase()) {
-						    case "full":
-								if (catalog.tableExists(icebergTable)) {
-									LOGGER.info("Starting upload in full mode...");
-									LOGGER.info("Dropping table {} from catalog {}", icebergTable.name(), catalog.name());
-									if (!catalog.dropTable(icebergTable, true)) {
-										LOGGER.error("Unable to drop table {} from catalog {}", icebergTable.name(), catalog.name());
-										System.exit(1);
-									}
-									icebergTableExists = false;
-								}
-						        break;
-						    case "incremental":
-								LOGGER.info("Starting upload in incremental mode...");
-						        LOGGER.info("Add only data to table {} in catalog {}", icebergTable.name(), catalog.name());
-						        //TODO Check if we need additional logic for append
-								//TODO in preProcess
-						        break;
-						    case "merge":
-								LOGGER.info("Starting upload in merge mode...");
-						        LOGGER.info("Merging data to table {} in catalog {}", icebergTable.name(), catalog.name());
-								//TODO Check if we need additional logic for upsert
-								//TODO Probably need to Check Primary Keys
-								LOGGER.error("Merge upload mode is Not Implemented Yet");
+			switch (uploadModeValue.toLowerCase()) {
+				case "full":
+					if (catalog.tableExists(icebergTable)) {
+						LOGGER.info("Starting upload in full mode...");
+						LOGGER.info("Dropping table {} from catalog {}", icebergTable.name(), catalog.name());
+						if (!catalog.dropTable(icebergTable, true)) {
+							LOGGER.error(
+									"\n=====================\n" +
+									"Unable to drop table {} from catalog {}" +
+									"\n=====================\n",
+									icebergTable.name(), catalog.name());
 								System.exit(1);
-						        break;
-						    default:
-						        LOGGER.error("Unknown upload mode {}. Allowed full (replace), incremental (add only), merge (add/replace/delete)", uploadModeValue);
-						        System.exit(1);
 						}
-
+						icebergTableExists = false;
+					}
+					break;
+				case "incremental":
+					LOGGER.info("Starting upload in incremental mode...");
+					LOGGER.info("Add only data to table {} in catalog {}", icebergTable.name(), catalog.name());
+					//TODO Check if we need additional logic for append
+					//TODO in preProcess
+					break;
+				case "merge":
+					LOGGER.info("Starting upload in merge mode...");
+					LOGGER.info("Merging data to table {} in catalog {}", icebergTable.name(), catalog.name());
+					//TODO Check if we need additional logic for upsert
+					//TODO Probably need to Check Primary Keys
+					LOGGER.error(
+							"\n=====================\n" +
+							"Merge upload mode is Not Implemented Yet" +
+							"\n=====================\n");
+					System.exit(1);
+					break;
+				default:
+					LOGGER.error(
+							"\n=====================\n" +
+							"Unknown upload mode {}. Allowed full (replace), incremental (add only), merge (add/replace/delete)" +
+							"\n=====================\n",
+							uploadModeValue);
+					System.exit(1);
+			}
 
 			final Set<String> idColumnNames;
 			if (cmd.getOptionValues("I") == null || cmd.getOptionValues("I").length == 0) {
@@ -492,8 +501,11 @@ public class Ora2Iceberg {
 						partColumnNames.add(new ImmutableTriple<>(columnName, partColumnType, partThirdParam));
 					}
 					} else {
-						LOGGER.error("Unable to parse from command line values of Apache Iceberg Catalog properties!\n" +
-								"Please check parameters!");
+						LOGGER.error(
+								"\n=====================\n" +
+								"Unable to parse from command line values of Apache Iceberg Catalog properties!\n" +
+								"Please check parameters!" +
+								"\n=====================\n");
 						System.exit(1);
 					}
 				}
