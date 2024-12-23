@@ -392,6 +392,16 @@ public class Ora2Iceberg {
 						System.exit(1);
 					}
 					break;
+				case CATALOG_IMPL_S3TABLES:
+					final String s3TablesDb = StringUtils.isBlank(cmd.getOptionValue("iceberg-namespace")) ?
+							sourceSchema : cmd.getOptionValue("iceberg-namespace");
+					LOGGER.warn(
+							"\n=====================\n" +
+							"Converting Oracle upper case SCHEMA/TABLE/COLUMN names to AWS S3 Tables lower case names" +
+							"\n=====================\n");
+					icebergTable = TableIdentifier.of(
+							StringUtils.lowerCase(s3TablesDb), StringUtils.lowerCase(icebergTableName));
+					break;
 				case CATALOG_IMPL_NESSIE:
 					// Nessie namespaces are implicit and do not need to be explicitly created or deleted.
 					// The create and delete namespace methods are no-ops for the NessieCatalog.
