@@ -163,8 +163,11 @@ public class Ora2Iceberg {
 					catalogProps.put(CatalogProperties.CATALOG_IMPL,
 							cmd.getOptionValue("iceberg-catalog-type"));
 				} catch (ClassNotFoundException cnfe) {
-					LOGGER.error("Unable to load class {} specified as an Apache Iceberg catalog implementation!\n" +
-									"The following exception occured:\n{}\n",
+					LOGGER.error(
+							"\n=====================\n" +
+							"Unable to load class {} specified as an Apache Iceberg catalog implementation!\n" +
+							"The following exception occured:\n{}\n" +
+							"\n=====================\n",
 							icebergCatalogUri, cnfe.getMessage());
 					System.exit(1);
 				}
@@ -177,8 +180,11 @@ public class Ora2Iceberg {
 					catalogProps.put(params[i], params[i + 1]);
 				}
 			} else {
-				LOGGER.error("Unable to parse from command line values of Apache Iceberg Catalog properties!\n" +
-						"Please check parameters!");
+				LOGGER.error(
+						"\n=====================\n" +
+						"Unable to parse from command line values of Apache Iceberg Catalog properties!\n" +
+						"Please check parameters!" +
+						"\n=====================\n");
 				System.exit(1);
 			}
 		}
@@ -207,24 +213,33 @@ public class Ora2Iceberg {
 			}
 			catalog.initialize(cmd.getOptionValue("iceberg-catalog"), catalogProps);
 		} catch (ClassNotFoundException cnfe) {
-			LOGGER.error("Unable to load class {} specified as an Apache Iceberg catalog implementation!\n" +
-							"The following exception occured:\n{}\n",
+			LOGGER.error(
+					"\n=====================\n" +
+					"Unable to load class {} specified as an Apache Iceberg catalog implementation!\n" +
+					"The following exception occured:\n{}\n" +
+					"\n=====================\n",
 					catalogProps.get(CatalogProperties.CATALOG_IMPL), cnfe.getMessage());
 			System.exit(1);
 		} catch (NoSuchMethodException | SecurityException ce) {
 			final StringBuilder sb = new StringBuilder(0x400);
-			sb.append("\n");
+			sb.append('\n');
 			Arrays.asList(ce.getStackTrace()).forEach(ste -> sb.append(ste.toString()));
-			LOGGER.error("Unable to find no-arg constructor for class {} specified as an Apache Iceberg catalog implementation!\n" +
-							"The following exception occured:\n{}\n{}",
+			LOGGER.error(
+					"\n=====================\n" +
+					"Unable to find no-arg constructor for class {} specified as an Apache Iceberg catalog implementation!\n" +
+					"The following exception occured:\n{}\n{}" +
+					"\n=====================\n",
 					catalogProps.get(CatalogProperties.CATALOG_IMPL), ce.getMessage(), sb.toString());
 			System.exit(1);
 		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ie) {
 			final StringBuilder sb = new StringBuilder(0x400);
 			sb.append("\n");
 			Arrays.asList(ie.getStackTrace()).forEach(ste -> sb.append(ste.toString()));
-			LOGGER.error("Unable to instantiate constructor for class {} specified as an Apache Iceberg catalog implementation!\n" +
-							"The following exception occured:\n{}\n{}",
+			LOGGER.error(
+					"\n=====================\n" +
+					"Unable to instantiate constructor for class {} specified as an Apache Iceberg catalog implementation!\n" +
+					"The following exception occured:\n{}\n{}" +
+					"\n=====================\n",
 					catalogProps.get(CatalogProperties.CATALOG_IMPL), ie.getMessage(), sb.toString());
 			System.exit(1);
 		}
@@ -246,8 +261,11 @@ public class Ora2Iceberg {
 			final StringBuilder sb = new StringBuilder(0x400);
 			sb.append("\n");
 			Arrays.asList(sqle.getStackTrace()).forEach(ste -> sb.append(ste.toString()));
-			LOGGER.error("Unable to connect to Oracle Database using jdbcUrl '{}' as user '{}' with password '{}'!\n" +
-							"Exception: {}{}",
+			LOGGER.error(
+					"\n=====================\n" +
+					"Unable to connect to Oracle Database using jdbcUrl '{}' as user '{}' with password '{}'!\n" +
+					"Exception: {}{}" +
+					"\n=====================\n",
 					sourceUrl, sourceUser, sourcePassword, sqle.getMessage(), sb.toString());
 			System.exit(1);
 		}
@@ -303,8 +321,8 @@ public class Ora2Iceberg {
 				if (!isTableOrView) {
 					LOGGER.error(
 							"\n=====================\n" +
-									"WHERE clause can be provided only for a table or view!" +
-									"\n=====================\n");
+							"WHERE clause can be provided only for a table or view!" +
+							"\n=====================\n");
 					System.exit(1);
 				}
 				//TODO Do we need to check syntax for WHERE CLAUSE?
