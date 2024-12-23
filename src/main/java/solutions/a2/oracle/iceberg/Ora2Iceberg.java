@@ -375,7 +375,7 @@ public class Ora2Iceberg {
 						icebergTable = TableIdentifier.of(glueDb, icebergTableName);
 					}
 					try {
-						if (!AwsUtil.checkAndCreateDbIfMissed(icebergTable.namespace().toString())) {
+						if (!AwsUtil.checkAndCreateGlueDbIfMissed(icebergTable.namespace().toString())) {
 							LOGGER.error(
 									"\n=====================\n" +
 									"Unable to check or create AWS Glue database {}!" +

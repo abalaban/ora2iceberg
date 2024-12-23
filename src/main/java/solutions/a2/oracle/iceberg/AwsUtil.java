@@ -32,7 +32,7 @@ public class AwsUtil {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(AwsUtil.class);
 
-	static boolean checkAndCreateDbIfMissed(final String dbName) throws IOException {
+	static boolean checkAndCreateGlueDbIfMissed(final String dbName) throws IOException {
 		try {
 			final GlueClient glue = GlueClient.builder().build();
 			final GetDatabaseRequest dbRequest = GetDatabaseRequest.builder()
