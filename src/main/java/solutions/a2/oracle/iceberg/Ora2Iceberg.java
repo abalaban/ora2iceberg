@@ -401,6 +401,23 @@ public class Ora2Iceberg {
 							"\n=====================\n");
 					icebergTable = TableIdentifier.of(
 							StringUtils.lowerCase(s3TablesDb), StringUtils.lowerCase(icebergTableName));
+					try {
+						if (!AwsUtil.checkAndCreateS3TablesDbIfMissed(icebergTable.namespace().toString())) {
+							LOGGER.error(
+									"\n=====================\n" +
+									"Unable to check or create AWS S3 Tables namespace {}!" +
+									"\n=====================\n",
+									icebergTable.namespace().toString());
+							System.exit(1);
+						}
+					} catch (IOException ioe) {
+						LOGGER.error(
+								"\n=====================\n" +
+								"AWS  SDK error {}!\n{}\n" +
+								"\n=====================\n",
+								ioe.getMessage(), ExceptionUtils.getStackTrace(ioe));
+						System.exit(1);
+					}
 					break;
 				case CATALOG_IMPL_NESSIE:
 					// Nessie namespaces are implicit and do not need to be explicitly created or deleted.

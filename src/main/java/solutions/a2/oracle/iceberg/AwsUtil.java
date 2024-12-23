@@ -27,6 +27,13 @@ import software.amazon.awssdk.services.glue.model.EntityNotFoundException;
 import software.amazon.awssdk.services.glue.model.GetDatabaseRequest;
 import software.amazon.awssdk.services.glue.model.GetDatabaseResponse;
 import software.amazon.awssdk.services.glue.model.GlueException;
+import software.amazon.awssdk.services.s3tables.S3TablesClient;
+import software.amazon.awssdk.services.s3tables.model.CreateNamespaceRequest;
+import software.amazon.awssdk.services.s3tables.model.CreateNamespaceResponse;
+import software.amazon.awssdk.services.s3tables.model.GetNamespaceRequest;
+import software.amazon.awssdk.services.s3tables.model.GetNamespaceResponse;
+import software.amazon.awssdk.services.s3tables.model.NotFoundException;
+import software.amazon.awssdk.services.s3tables.model.S3TablesException;
 
 public class AwsUtil {
 
@@ -64,6 +71,46 @@ public class AwsUtil {
 			}
 		} catch (GlueException ge) {
 			throw new IOException(ge);
+		}
+		return false;
+	}
+
+	static boolean checkAndCreateS3TablesDbIfMissed(final String dbName) throws IOException {
+		try {
+			final S3TablesClient s3Tables = S3TablesClient.builder().build();
+			final GetNamespaceRequest nsRequest = GetNamespaceRequest.builder()
+					.namespace(dbName)
+					.build();
+			GetNamespaceResponse response = null;
+			try {
+				response = s3Tables.getNamespace(nsRequest);
+			} catch(NotFoundException nfe) {
+				LOGGER.warn("namespace {} not found in default S3 Tables catalog!", dbName);
+			}
+			if (response != null &&
+					response.hasNamespace()) {
+				boolean result = false;
+				for (final String ns : response.namespace()) {
+					if (StringUtils.equals(ns, dbName)) {
+						result = true;
+						break;
+					}
+				}
+				if (result) {
+					return true;
+				}
+				final CreateNamespaceRequest crNsRequest =  CreateNamespaceRequest.builder()
+						.namespace(dbName)
+						.build();
+				final CreateNamespaceResponse crNsResponse = s3Tables.createNamespace(crNsRequest);
+				if (crNsResponse != null &&
+						crNsResponse.sdkHttpResponse() != null &&
+								crNsResponse.sdkHttpResponse().isSuccessful()) {
+					return true;
+				}
+			}
+		} catch (S3TablesException s3e) {
+			throw new IOException(s3e);
 		}
 		return false;
 	}
