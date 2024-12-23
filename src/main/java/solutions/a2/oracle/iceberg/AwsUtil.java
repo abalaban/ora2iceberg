@@ -107,7 +107,7 @@ public class AwsUtil {
 				final CreateNamespaceResponse crNsResponse = s3Tables.createNamespace(crNsRequest);
 				if (crNsResponse != null &&
 						crNsResponse.sdkHttpResponse() != null &&
-								crNsResponse.sdkHttpResponse().isSuccessful()) {
+						crNsResponse.sdkHttpResponse().isSuccessful()) {
 					return true;
 				}
 			}
