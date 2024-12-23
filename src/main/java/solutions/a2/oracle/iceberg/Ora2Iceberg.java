@@ -395,18 +395,6 @@ public class Ora2Iceberg {
 					break;
 			}
 
-
-//          //Keep to Debug Catalog Properties
-//			for (Field field : catalog.getClass().getDeclaredFields()) {
-//				field.setAccessible(true);
-//                try {
-//                    System.out.println(field.getName() + " = " + field.get(catalog));
-//                } catch (IllegalAccessException e) {
-//                    throw new RuntimeException(e);
-//                }
-//            }
-
-
 				String uploadModeValue = cmd.getOptionValue("upload-mode", UPLOAD_DEFAULT_MODE);
 
 			    boolean icebergTableExists = catalog.tableExists(icebergTable);
