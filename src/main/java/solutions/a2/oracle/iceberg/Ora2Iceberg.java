@@ -102,8 +102,6 @@ public class Ora2Iceberg {
 		CATALOG_IMPL.put(CATALOG_IMPL_DYNAMODB, "org.apache.iceberg.aws.dynamodb.DynamoDbCatalog");
 	}
 
-	private static final String DEFAULT_CATALOG_URI = "http://glue-fake-uri:11111/api/v2";
-
 	private static final String DRIVER_POSTGRESQL = "org.postgresql.Driver";
 	private static final String PREFIX_POSTGRESQL = "jdbc:postgresql:";
 	private static final String DRIVER_SQLITE = "org.sqlite.JDBC";
@@ -113,6 +111,8 @@ public class Ora2Iceberg {
 	private static final String OPT_ICEBERG_PARTITION_SHORT = "P";
 	private static final String OPT_ICEBERG_CATALOG_IMPL = "iceberg-catalog-type";
 	private static final String OPT_ICEBERG_CATALOG_IMPL_SHORT =  "T";
+	private static final String OPT_ICEBERG_CATALOG_URI = "iceberg-catalog-uri";
+	private static final String OPT_ICEBERG_CATALOG_URI_SHORT = "U";
 
 	public static void main(String[] argv) {
 		LOGGER.info("Starting...");
@@ -132,23 +132,24 @@ public class Ora2Iceberg {
 			System.exit(1);
 		}
 
-		final String icebergCatalogUri = cmd.getOptionValue("iceberg-catalog-uri", DEFAULT_CATALOG_URI);
-		//Check for Catalog URI, can be blank only for the Glue
-		if (!StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT)).equals(CATALOG_IMPL_GLUE) &&
-				!cmd.hasOption("iceberg-catalog-uri")) {
-			LOGGER.error(
-					"\n=====================\n" +
-					"The --iceberg-catalog-uri (-U) parameter cannot be empty when using the \n" +
-					"catalog type --{}(-{}) set to {}). Please provide a valid URI for the catalog server" +
-					"\n=====================\n",
-					OPT_ICEBERG_CATALOG_IMPL, OPT_ICEBERG_CATALOG_IMPL_SHORT,
-					StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT)));
-			System.exit(1);
-		}
-
 		final Map<String, String> catalogProps = new HashMap<>();
+		if (!StringUtils.equalsIgnoreCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT), CATALOG_IMPL_GLUE) &&
+				!StringUtils.equalsIgnoreCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT), CATALOG_IMPL_S3TABLES)) {
+			final String icebergCatalogUri = cmd.getOptionValue(OPT_ICEBERG_CATALOG_URI_SHORT);
+			if (StringUtils.isBlank(icebergCatalogUri)) {
+				LOGGER.error(
+						"\n=====================\n" +
+						"The --{}/-{} parameter cannot be empty when using the \n" +
+						"catalog type --{}/-{} set to {}). Please provide a valid URI for the catalog server" +
+						"\n=====================\n",
+						OPT_ICEBERG_CATALOG_URI, OPT_ICEBERG_CATALOG_URI_SHORT,
+						OPT_ICEBERG_CATALOG_IMPL, OPT_ICEBERG_CATALOG_IMPL_SHORT,
+						StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT)));
+				System.exit(1);
+			}
+			catalogProps.put(CatalogProperties.URI, icebergCatalogUri);
+		}
 		catalogProps.put(CatalogProperties.WAREHOUSE_LOCATION, cmd.getOptionValue("iceberg-warehouse"));
-		catalogProps.put(CatalogProperties.URI, icebergCatalogUri);
 		switch (StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT))) {
 			case CATALOG_IMPL_REST:
 			case CATALOG_IMPL_JDBC:
@@ -181,11 +182,10 @@ public class Ora2Iceberg {
 							"Unable to load class {} specified as an Apache Iceberg catalog implementation!\n" +
 							"The following exception occured:\n{}\n" +
 							"\n=====================\n",
-							icebergCatalogUri, cnfe.getMessage());
+							cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT), cnfe.getMessage());
 					System.exit(1);
 				}
 		}
-		catalogProps.put(CatalogProperties.URI, icebergCatalogUri);
 		final String[] params = cmd.getOptionValues("R");
 		if (params != null && params.length > 0) {
 			if (params.length % 2 == 0) {
@@ -328,9 +328,7 @@ public class Ora2Iceberg {
 				}
 			}
 
-
 			if (cmd.hasOption("where-clause")) {
-
 				if (!isTableOrView) {
 					LOGGER.error(
 							"\n=====================\n" +
@@ -655,8 +653,8 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(catalogName);
 
-		final Option catalogUri = Option.builder("U")
-				.longOpt("iceberg-catalog-uri")
+		final Option catalogUri = Option.builder(OPT_ICEBERG_CATALOG_URI_SHORT)
+				.longOpt(OPT_ICEBERG_CATALOG_URI)
 				.hasArg(true)
 				.required(false)
 				.desc("Apache Iceberg Catalog URI")
