@@ -404,7 +404,7 @@ public class Ora2Iceberg {
 					try {
 						if (!AwsUtil.checkAndCreateS3TablesDbIfMissed(
 								icebergTable.namespace().toString(),
-								CatalogProperties.WAREHOUSE_LOCATION)) {
+								catalogProps.get(CatalogProperties.WAREHOUSE_LOCATION))) {
 							LOGGER.error(
 									"\n=====================\n" +
 									"Unable to check or create AWS S3 Tables namespace {}!" +
