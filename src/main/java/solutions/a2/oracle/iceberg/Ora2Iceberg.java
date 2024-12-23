@@ -632,7 +632,7 @@ public class Ora2Iceberg {
 		options.addOption(catalogWarehouse);
 
 		final Option catalogProperties = Option.builder("R")
-				.argName("iceberg-catalog-properties")
+				.longOpt("iceberg-catalog-properties")
 				.hasArgs()
 				.valueSeparator('=')
 				.desc("Additional properties for Apache Iceberg catalog implementation")
@@ -656,14 +656,14 @@ public class Ora2Iceberg {
 		options.addOption(icebergTable);
 
 		final Option idColumns = Option.builder("I")
-				.argName("iceberg-id-columns")
+				.longOpt("iceberg-id-columns")
 				.hasArgs()
 				.desc("Apache Iceberg table identifier column names")
 				.build();
 		options.addOption(idColumns);
 
 		final Option partitionBy = Option.builder("P")
-				.argName("iceberg-partition")
+				.longOpt("iceberg-partition")
 				.hasArgs()
 				.valueSeparator('=')
 				.desc("Partitioning definition for table")
