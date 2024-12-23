@@ -329,8 +329,9 @@ public class StructAndDataMover {
 			};
 
 			//TODO - where clause!!!
-			final PreparedStatement ps;
-            ps = connection.prepareStatement("select * from \"" + sourceSchema + "\".\"" + sourceObject + "\""+" "+whereClause);
+			final PreparedStatement ps = connection.prepareStatement(
+							"select * from \"" + sourceSchema + "\".\"" + sourceObject + "\"" +
+							(StringUtils.isBlank(whereClause) ? "" : "\n" + whereClause));
             final OracleResultSet rs = (OracleResultSet) ps.executeQuery();
 			//TODO - run statistic!
 			//TODO - progress on screen!!!

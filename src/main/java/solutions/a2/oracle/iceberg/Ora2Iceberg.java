@@ -252,7 +252,7 @@ public class Ora2Iceberg {
 		final String sourceUrl = cmd.getOptionValue("source-jdbc-url");
 		final String sourceUser = cmd.getOptionValue("source-user");
 		final String sourcePassword = cmd.getOptionValue("source-password");
-		final String whereClause = cmd.getOptionValue("where-clause", "where 1=1");
+		final String whereClause = cmd.getOptionValue("where-clause");
 		final String dataTypeMap = cmd.getOptionValue("data-type-map");
 		Connection connection = null;
 		try {
