@@ -88,8 +88,7 @@ public class AwsUtil {
 			} catch(NotFoundException nfe) {
 				LOGGER.warn("namespace {} not found in default S3 Tables catalog!", dbName);
 			}
-			if (response != null &&
-					response.hasNamespace()) {
+			if (response != null) {
 				boolean result = false;
 				for (final String ns : response.namespace()) {
 					if (StringUtils.equals(ns, dbName)) {
@@ -100,7 +99,9 @@ public class AwsUtil {
 				if (result) {
 					return true;
 				}
+			} else {
 				final CreateNamespaceRequest crNsRequest =  CreateNamespaceRequest.builder()
+						.tableBucketARN(arn)
 						.namespace(dbName)
 						.build();
 				final CreateNamespaceResponse crNsResponse = s3Tables.createNamespace(crNsRequest);
