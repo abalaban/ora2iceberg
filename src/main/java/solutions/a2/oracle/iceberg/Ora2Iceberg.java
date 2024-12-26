@@ -89,6 +89,7 @@ public class Ora2Iceberg {
 	private static final String CATALOG_IMPL_GLUE = "GLUE";
 	private static final String CATALOG_IMPL_S3TABLES = "S3TABLES";
 	private static final String CATALOG_IMPL_DYNAMODB = "DYNAMODB";
+	private static final String CATALOG_IMPL_SNOWFLAKE = "SNOWFLAKE";
 	private static final Map<String, String> CATALOG_IMPL = new HashMap<>();
 
 	static {
@@ -100,6 +101,7 @@ public class Ora2Iceberg {
 		CATALOG_IMPL.put(CATALOG_IMPL_GLUE, "org.apache.iceberg.aws.glue.GlueCatalog");
 		CATALOG_IMPL.put(CATALOG_IMPL_S3TABLES, "software.amazon.s3tables.iceberg.S3TablesCatalog");
 		CATALOG_IMPL.put(CATALOG_IMPL_DYNAMODB, "org.apache.iceberg.aws.dynamodb.DynamoDbCatalog");
+		CATALOG_IMPL.put(CATALOG_IMPL_SNOWFLAKE, "org.apache.iceberg.snowflake.SnowflakeCatalog");
 	}
 
 	private static final String DRIVER_POSTGRESQL = "org.postgresql.Driver";
@@ -159,6 +161,7 @@ public class Ora2Iceberg {
 			case CATALOG_IMPL_GLUE:
 			case CATALOG_IMPL_S3TABLES:
 			case CATALOG_IMPL_DYNAMODB:
+			case CATALOG_IMPL_SNOWFLAKE:
 				catalogProps.put(CatalogProperties.CATALOG_IMPL,
 						CATALOG_IMPL.get(StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT))));
 				break;
@@ -634,13 +637,14 @@ public class Ora2Iceberg {
 				.hasArg(true)
 				.required(true)
 				.desc("One of " +
-						CATALOG_IMPL_REST + "," +
-						CATALOG_IMPL_JDBC + "," +
-						CATALOG_IMPL_HADOOP + "," +
-						CATALOG_IMPL_HIVE + "," +
-						CATALOG_IMPL_NESSIE + "," +
-						CATALOG_IMPL_GLUE + "," +
-						CATALOG_IMPL_DYNAMODB +
+						CATALOG_IMPL_REST + ", " +
+						CATALOG_IMPL_JDBC + ", " +
+						CATALOG_IMPL_HADOOP + ", " +
+						CATALOG_IMPL_HIVE + ", " +
+						CATALOG_IMPL_NESSIE + ", " +
+						CATALOG_IMPL_GLUE + ", " +
+						CATALOG_IMPL_DYNAMODB + ", " +
+						CATALOG_IMPL_SNOWFLAKE +
 						" or full-qualified name of class extending org.apache.iceberg.BaseMetastoreCatalog.")
 				.build();
 		options.addOption(catalogImpl);
