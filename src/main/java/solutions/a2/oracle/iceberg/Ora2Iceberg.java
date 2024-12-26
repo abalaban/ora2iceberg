@@ -107,7 +107,10 @@ public class Ora2Iceberg {
 	private static final String DRIVER_POSTGRESQL = "org.postgresql.Driver";
 	private static final String PREFIX_POSTGRESQL = "jdbc:postgresql:";
 	private static final String DRIVER_SQLITE = "org.sqlite.JDBC";
+	private static final String DRIVER_MARIADB = "org.mariadb.jdbc.Driver";
 	private static final String PREFIX_SQLITE = "jdbc:sqlite:";
+	private static final String PREFIX_MYSQL = "jdbc:mysql:";
+	private static final String PREFIX_MARIADB = "jdbc:mariadb:";
 
 	private static final String OPT_ICEBERG_PARTITION = "iceberg-partition";
 	private static final String OPT_ICEBERG_PARTITION_SHORT = "P";
@@ -204,19 +207,19 @@ public class Ora2Iceberg {
 				System.exit(1);
 			}
 		}
-		if (StringUtils.equals(CATALOG_IMPL_JDBC, StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT))))
-		{
+		if (StringUtils.equals(CATALOG_IMPL_JDBC, StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT)))) {
 			if (StringUtils.startsWith(catalogProps.get(CatalogProperties.URI), PREFIX_POSTGRESQL) &&
-					!isDriverLoaded(DRIVER_POSTGRESQL)) {
-				try {
-					Class.forName(DRIVER_POSTGRESQL);
-				} catch (ClassNotFoundException cnf) { }
-			} else if (StringUtils.startsWith(catalogProps.get(CatalogProperties.URI), PREFIX_SQLITE) &&
-					!isDriverLoaded(DRIVER_SQLITE)) {
-				try {
-					Class.forName(DRIVER_SQLITE);
-				} catch (ClassNotFoundException cnf) { }
-			}
+					!isDriverLoaded(DRIVER_POSTGRESQL))
+				try {Class.forName(DRIVER_POSTGRESQL);} catch (ClassNotFoundException cnf) {}
+			else if (StringUtils.startsWith(catalogProps.get(CatalogProperties.URI), PREFIX_SQLITE) &&
+					!isDriverLoaded(DRIVER_SQLITE))
+				try {Class.forName(DRIVER_SQLITE);} catch (ClassNotFoundException cnf) {}
+			else if (StringUtils.startsWith(catalogProps.get(CatalogProperties.URI), PREFIX_MYSQL) &&
+					!isDriverLoaded(DRIVER_MARIADB))
+				try {Class.forName(DRIVER_MARIADB);} catch (ClassNotFoundException cnf) {}
+			else if (StringUtils.startsWith(catalogProps.get(CatalogProperties.URI), PREFIX_MARIADB) &&
+					!isDriverLoaded(DRIVER_MARIADB))
+				try {Class.forName(DRIVER_MARIADB);} catch (ClassNotFoundException cnf) {}				
 		}
 		BaseMetastoreCatalog catalog = null;
 		try {
