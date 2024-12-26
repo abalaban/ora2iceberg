@@ -51,6 +51,7 @@ gradle dependencyCheckAnalyze
 | `-t` | `--iceberg-table` | Name of the destination Iceberg table. Defaults to the source object name for tables/views. | `iceberg_table_name`
 | `-P` | `--iceberg-partition` | Partitioning definitions for the Iceberg table. | `columnName=YEAR` or `columnName=BUCKET,10`
 | `-L` | `--upload-mode` | Upload mode: `full`, `incremental`, or `merge`. *Merge is not implemented yet.* | `full`
+| `-R` | `--iceberg-catalog-properties` | Additional properties for Apache Iceberg catalog implementation | `-Rs3.endpoint=http://ozone.companyname.com:9878/`
 |===
 
 === Additional Options
