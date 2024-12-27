@@ -430,6 +430,18 @@ public class Ora2Iceberg {
 					// The create and delete namespace methods are no-ops for the NessieCatalog.
 					icebergTable = TableIdentifier.of(icebergTableName);
 					break;
+				case CATALOG_IMPL_SNOWFLAKE:
+					final String snowNamespace = cmd.getOptionValue("iceberg-namespace");
+					if (StringUtils.isBlank(snowNamespace)) {
+						LOGGER.error(
+								"\n=====================\n" +
+								"Must specify namespace for Snowflake catalog!" +
+								"\n=====================\n");
+						System.exit(1);
+					}
+					icebergTable = TableIdentifier.of(
+							Namespace.of(StringUtils.split(snowNamespace, '.')), icebergTableName);
+					break;
 				default:
 					final Namespace namespace;
 					if (StringUtils.isBlank(cmd.getOptionValue("iceberg-namespace"))) {
