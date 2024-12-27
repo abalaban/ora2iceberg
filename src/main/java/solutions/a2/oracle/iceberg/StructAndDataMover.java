@@ -43,6 +43,7 @@ import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.InternalRecordWrapper;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.io.OutputFileFactory;
 import org.apache.iceberg.io.PartitionedFanoutWriter;
 import org.apache.iceberg.types.Type;
@@ -54,6 +55,7 @@ import org.apache.iceberg.PartitionKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.snowflake.client.jdbc.SnowflakeSQLException;
 import oracle.jdbc.OracleResultSet;
 import oracle.sql.NUMBER;
 
@@ -270,10 +272,27 @@ public class StructAndDataMover {
 
 				try {
 					if (!icebergTableExists) {
-					    table = catalog.createTable(
-					        icebergTable,
-					        schema,
-					        spec);
+						try {
+							table = catalog.createTable(
+									icebergTable,
+									schema,
+									spec);
+						} catch (Exception e) {
+							if (e instanceof NoSuchTableException &&
+									e.getCause() != null &&
+									e instanceof SnowflakeSQLException) {
+								//TODO table creation through SF JDBC?
+								LOGGER.error(
+										"\n=====================\n" +
+										"Please create Snowflake Iceberg table manually!\n" +
+										"Stack trace:\n{}\n" +
+										"\n=====================\n",
+										ExceptionUtils.getFullStackTrace(e));
+								System.exit(1);
+							} else {
+								throw e;
+							}
+						}
 					} else {
 					    table = catalog.loadTable(icebergTable);
 					}
