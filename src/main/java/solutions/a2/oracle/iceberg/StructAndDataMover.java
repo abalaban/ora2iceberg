@@ -89,25 +89,6 @@ public class StructAndDataMover {
 	private final long targetFileSize;
 	private Table table;
 
-	private static String jdbcTypeToString(int jdbcType) {
-		switch (jdbcType) {
-			case java.sql.Types.BOOLEAN: return "BOOLEAN";
-			case java.sql.Types.INTEGER: return "INTEGER";
-			case java.sql.Types.BIGINT: return "BIGINT";
-			case java.sql.Types.NUMERIC: return "NUMERIC";
-			case java.sql.Types.VARCHAR: return "VARCHAR";
-			case java.sql.Types.TIMESTAMP: return "TIMESTAMP";
-			case java.sql.Types.TIMESTAMP_WITH_TIMEZONE: return "TIMESTAMP_WITH_TIMEZONE";
-			case java.sql.Types.BINARY: return "BINARY";
-			case java.sql.Types.FLOAT: return "FLOAT";
-			case java.sql.Types.DOUBLE: return "DOUBLE";
-			case java.sql.Types.DATE: return "DATE";
-			case java.sql.Types.TIME: return "TIME";
-			default:
-				return "UNKNOWN(" + jdbcType + ")";
-		}
-	}
-
 	StructAndDataMover(
 			final DatabaseMetaData dbMetaData,
 			final String sourceSchema,
@@ -178,7 +159,7 @@ public class StructAndDataMover {
 
 
 				LOGGER.info("Column map info {}:{}={}({}.{})",
-						columnName, jdbcTypeToString(jdbcType), jdbcTypeToString(mappedType), finalPrecision, finalScale);
+						columnName, JdbcTypes.getTypeName(jdbcType), JdbcTypes.getTypeName(mappedType), finalPrecision, finalScale);
 
 				addColumn = true;
 				if (addColumn) {
