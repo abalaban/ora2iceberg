@@ -120,6 +120,8 @@ public class Ora2Iceberg {
 	private static final String OPT_ICEBERG_CATALOG_URI_SHORT = "U";
 	private static final String OPT_ICEBERG_SOURCE_SCHEMA = "source-schema";
 	private static final String OPT_ICEBERG_SOURCE_SCHEMA_SHORT = "s";
+	private static final String OPT_ICEBERG_SOURCE_OBJECT = "source-object";
+	private static final String OPT_ICEBERG_SOURCE_OBJECT_SHORT = "o";
 
 	public static void main(String[] argv) {
 		LOGGER.info("Starting...");
@@ -313,26 +315,26 @@ public class Ora2Iceberg {
 
 			final String sourceObject;
 			final boolean isTableOrView;
-			if (StringUtils.containsWhitespace(cmd.getOptionValue("source-object"))) {
+			if (StringUtils.containsWhitespace(cmd.getOptionValue(OPT_ICEBERG_SOURCE_OBJECT_SHORT))) {
 				isTableOrView = false;
-				if (SQL_EXPRESSION.matcher(cmd.getOptionValue("source-object")).matches()) {
-					sourceObject = cmd.getOptionValue("source-object");
+				if (SQL_EXPRESSION.matcher(cmd.getOptionValue(OPT_ICEBERG_SOURCE_OBJECT_SHORT)).matches()) {
+					sourceObject = cmd.getOptionValue(OPT_ICEBERG_SOURCE_OBJECT_SHORT);
 				} else {
 					sourceObject = null;
 					LOGGER.error(
 							"\n=====================\n" +
 							"'{}' is not a valid SQL SELECT statement!" +
 							"\n=====================\n",
-							cmd.getOptionValue("source-object"));
+							cmd.getOptionValue(OPT_ICEBERG_SOURCE_OBJECT_SHORT));
 					System.exit(1);
 				}
 			} else {
 				isTableOrView = true;
-				if (StringUtils.startsWith(cmd.getOptionValue("source-object"), "\"") &&
-						StringUtils.endsWith(cmd.getOptionValue("source-object"), "\"")) {
-					sourceObject = cmd.getOptionValue("source-object");
+				if (StringUtils.startsWith(cmd.getOptionValue(OPT_ICEBERG_SOURCE_OBJECT_SHORT), "\"") &&
+						StringUtils.endsWith(cmd.getOptionValue(OPT_ICEBERG_SOURCE_OBJECT_SHORT), "\"")) {
+					sourceObject = cmd.getOptionValue(OPT_ICEBERG_SOURCE_OBJECT_SHORT);
 				} else {
-					sourceObject = StringUtils.upperCase(cmd.getOptionValue("source-object"));
+					sourceObject = StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_SOURCE_OBJECT_SHORT));
 				}
 			}
 
@@ -355,7 +357,7 @@ public class Ora2Iceberg {
 						"\n=====================\n" +
 						"Must specify destination table using -T/--iceberg-table name when using SQL STATEMENT as source!" +
 						"\n=====================\n",
-						cmd.getOptionValue("source-object"));
+						cmd.getOptionValue(OPT_ICEBERG_SOURCE_OBJECT_SHORT));
 				System.exit(1);
 			} else {
 				//Changing logic to use Default value in getOptionValue
@@ -621,8 +623,8 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(sourceSchema);
 
-		final Option sourceObject = Option.builder("o")
-				.longOpt("source-object")
+		final Option sourceObject = Option.builder(OPT_ICEBERG_SOURCE_OBJECT_SHORT)
+				.longOpt(OPT_ICEBERG_SOURCE_OBJECT)
 				.hasArg(true)
 				.required(true)
 				.desc("The name of source table or view, or valid SQL SELECT statement to query data")
