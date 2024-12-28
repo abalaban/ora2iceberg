@@ -81,12 +81,10 @@ public class StructAndDataMover {
 	private static final int INFO_SIZE = 4;
 
 	private final Connection connection;
-    private final String dataTypeMap;
     private final boolean isTableOrView;
 	private final String sourceSchema;
 	private final String sourceObject;
 	private final String whereClause;
-	private final String defaultNumeric;
 	private final Map<String, int[]> columnsMap;
 	private final long targetFileSize;
 	private Table table;
@@ -133,8 +131,6 @@ public class StructAndDataMover {
 		this.sourceObject = sourceObject;
 		this.targetFileSize = targetFileSize;
 		this.whereClause = whereClause;
-		this.defaultNumeric = defaultNumeric;
-		this.dataTypeMap = dataTypeMap;
 
 		final String sourceCatalog;
 		if (isTableOrView) {
