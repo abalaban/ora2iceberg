@@ -573,9 +573,13 @@ public class Ora2Iceberg {
 			sdm.loadData();
 
 		} catch (SQLException sqle) {
-			//TODO
-			//TODO
-			//TODO
+			LOGGER.error(
+					"\n=====================\n" +
+					"Caught SQLException {}!\n" +
+					"Stack trace details:\n{}\n" +
+					"\n=====================\n",
+					sqle.getMessage(), ExceptionUtils.getStackTrace(sqle));
+			System.exit(1);
 		}
 	}
 
