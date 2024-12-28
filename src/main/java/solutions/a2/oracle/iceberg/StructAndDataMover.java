@@ -134,8 +134,9 @@ public class StructAndDataMover {
 			final Set<Integer> pkIds = new HashSet<>();
 			int columnId = 0;
 
-			if (dataTypeMap != null && !dataTypeMap.isEmpty()) {Ora2IcebergTypeMapper.configureOverrides(dataTypeMap);}
-
+			if (dataTypeMap != null && !dataTypeMap.isEmpty()) {
+				Ora2IcebergTypeMapper.configureOverrides(dataTypeMap);
+			}
 			Ora2IcebergTypeMapper.configureDefaultNumberFallback(defaultNumeric);
 
 			final boolean idColumnsPresent = idColumnNames != null && !idColumnNames.isEmpty();
