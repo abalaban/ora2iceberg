@@ -118,6 +118,8 @@ public class Ora2Iceberg {
 	private static final String OPT_ICEBERG_CATALOG_IMPL_SHORT =  "T";
 	private static final String OPT_ICEBERG_CATALOG_URI = "iceberg-catalog-uri";
 	private static final String OPT_ICEBERG_CATALOG_URI_SHORT = "U";
+	private static final String OPT_ICEBERG_SOURCE_SCHEMA = "source-schema";
+	private static final String OPT_ICEBERG_SOURCE_SCHEMA_SHORT = "s";
 
 	public static void main(String[] argv) {
 		LOGGER.info("Starting...");
@@ -298,14 +300,14 @@ public class Ora2Iceberg {
 					dbMetaData.getDatabaseProductName(), dbMetaData.getDatabaseProductVersion(),
 					dbMetaData.getDriverName(), dbMetaData.getDriverVersion());
 			final String sourceSchema;
-			if (StringUtils.isBlank(cmd.getOptionValue("source-schema"))) {
+			if (StringUtils.isBlank(cmd.getOptionValue(OPT_ICEBERG_SOURCE_SCHEMA_SHORT))) {
 				sourceSchema = dbMetaData.getUserName();
 			} else {
-				if (StringUtils.startsWith(cmd.getOptionValue("source-schema"), "\"") &&
-						StringUtils.endsWith(cmd.getOptionValue("source-schema"), "\"")) {
-					sourceSchema = cmd.getOptionValue("source-schema");
+				if (StringUtils.startsWith(cmd.getOptionValue(OPT_ICEBERG_SOURCE_SCHEMA_SHORT), "\"") &&
+						StringUtils.endsWith(cmd.getOptionValue(OPT_ICEBERG_SOURCE_SCHEMA_SHORT), "\"")) {
+					sourceSchema = cmd.getOptionValue(OPT_ICEBERG_SOURCE_SCHEMA_SHORT);
 				} else {
-					sourceSchema = StringUtils.upperCase(cmd.getOptionValue("source-schema"));
+					sourceSchema = StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_SOURCE_SCHEMA_SHORT));
 				}
 			}
 
@@ -611,8 +613,8 @@ public class Ora2Iceberg {
 		options.addOption(sourcePassword);
 
 		// Source object description
-		final Option sourceSchema = Option.builder("s")
-				.longOpt("source-schema")
+		final Option sourceSchema = Option.builder(OPT_ICEBERG_SOURCE_SCHEMA_SHORT)
+				.longOpt(OPT_ICEBERG_SOURCE_SCHEMA)
 				.hasArg(true)
 				.required(false)
 				.desc("Source schema name. If not specified - value of <source-user> is used")
