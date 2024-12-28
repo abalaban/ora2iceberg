@@ -304,9 +304,12 @@ public class StructAndDataMover {
 
 	void loadData() throws SQLException {
 
+		final long startMillis = System.currentTimeMillis();
 		int partitionId = 1, taskId = 1;
 		final GenericAppenderFactory af = new GenericAppenderFactory(table.schema(),table.spec());
-		final OutputFileFactory off = OutputFileFactory.builderFor(table, partitionId, taskId).format(FileFormat.PARQUET).build();
+		final OutputFileFactory off = OutputFileFactory.builderFor(table, partitionId, taskId)
+														.format(FileFormat.PARQUET)
+														.build();
 		final PartitionKey partitionKey = new PartitionKey(table.spec(), table.spec().schema());
 		final InternalRecordWrapper recordWrapper = new InternalRecordWrapper(table.schema().asStruct());
 
@@ -451,6 +454,22 @@ public class StructAndDataMover {
 			}
 			Snapshot newSnapshot = appendFiles.apply();
 			appendFiles.commit();
+
+			final StringBuilder sb = new StringBuilder(0x400);
+			sb
+				.append("\n=====================\n")
+				.append("\tSummary data for the operation that produced new snapshot")
+				.append("\nElapsed time: ")
+				.append((System.currentTimeMillis() - startMillis))
+				.append(" ms");
+			newSnapshot.summary().forEach((k, v) ->
+				sb
+					.append('\n')
+					.append(k)
+					.append("\t:")
+					.append(v));
+			sb.append("\n=====================\n");
+			LOGGER.info(sb.toString());
 
 		} else {
 			//TODO
