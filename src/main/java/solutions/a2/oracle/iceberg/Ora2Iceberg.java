@@ -123,6 +123,7 @@ public class Ora2Iceberg {
 	private static final String OPT_ICEBERG_SOURCE_OBJECT = "source-object";
 	private static final String OPT_ICEBERG_SOURCE_OBJECT_SHORT = "o";
 
+	@SuppressWarnings("unchecked")
 	public static void main(String[] argv) {
 		LOGGER.info("Starting...");
 
