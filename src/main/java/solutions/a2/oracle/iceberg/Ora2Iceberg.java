@@ -122,6 +122,8 @@ public class Ora2Iceberg {
 	private static final String OPT_ICEBERG_SOURCE_SCHEMA_SHORT = "s";
 	private static final String OPT_ICEBERG_SOURCE_OBJECT = "source-object";
 	private static final String OPT_ICEBERG_SOURCE_OBJECT_SHORT = "o";
+	private static final String OPT_ICEBERG_NAMESPACE = "iceberg-namespace";
+	private static final String OPT_ICEBERG_NAMESPACE_SHORT = "N";
 
 	@SuppressWarnings("unchecked")
 	public static void main(String[] argv) {
@@ -362,14 +364,17 @@ public class Ora2Iceberg {
 				System.exit(1);
 			} else {
 				//Changing logic to use Default value in getOptionValue
+				//TODO
+				//TODO - what if is not table or view???
+				//TODO
 				icebergTableName = cmd.getOptionValue("iceberg-table", sourceObject);
 			}
 
 			final TableIdentifier icebergTable;
 			switch (StringUtils.upperCase(cmd.getOptionValue(OPT_ICEBERG_CATALOG_IMPL_SHORT))) {
 				case CATALOG_IMPL_GLUE:
-					final String glueDb = StringUtils.isBlank(cmd.getOptionValue("iceberg-namespace")) ?
-							sourceSchema : cmd.getOptionValue("iceberg-namespace");
+					final String glueDb = StringUtils.isBlank(cmd.getOptionValue(OPT_ICEBERG_NAMESPACE_SHORT)) ?
+							sourceSchema : cmd.getOptionValue(OPT_ICEBERG_NAMESPACE_SHORT);
 					if ((catalogProps.containsKey(AwsProperties.GLUE_CATALOG_SKIP_NAME_VALIDATION) &&
 							StringUtils.equalsIgnoreCase(catalogProps.get(AwsProperties.GLUE_CATALOG_SKIP_NAME_VALIDATION), "false")) ||
 							(!catalogProps.containsKey(AwsProperties.GLUE_CATALOG_SKIP_NAME_VALIDATION) &&
@@ -402,8 +407,8 @@ public class Ora2Iceberg {
 					}
 					break;
 				case CATALOG_IMPL_S3TABLES:
-					final String s3TablesDb = StringUtils.isBlank(cmd.getOptionValue("iceberg-namespace")) ?
-							sourceSchema : cmd.getOptionValue("iceberg-namespace");
+					final String s3TablesDb = StringUtils.isBlank(cmd.getOptionValue(OPT_ICEBERG_NAMESPACE_SHORT)) ?
+							sourceSchema : cmd.getOptionValue(OPT_ICEBERG_NAMESPACE_SHORT);
 					LOGGER.warn(
 							"\n=====================\n" +
 							"Converting Oracle upper case SCHEMA/TABLE/COLUMN names to AWS S3 Tables lower case names" +
@@ -436,7 +441,7 @@ public class Ora2Iceberg {
 					icebergTable = TableIdentifier.of(icebergTableName);
 					break;
 				case CATALOG_IMPL_SNOWFLAKE:
-					final String snowNamespace = cmd.getOptionValue("iceberg-namespace");
+					final String snowNamespace = cmd.getOptionValue(OPT_ICEBERG_NAMESPACE_SHORT);
 					if (StringUtils.isBlank(snowNamespace)) {
 						LOGGER.error(
 								"\n=====================\n" +
@@ -449,10 +454,10 @@ public class Ora2Iceberg {
 					break;
 				default:
 					final Namespace namespace;
-					if (StringUtils.isBlank(cmd.getOptionValue("iceberg-namespace"))) {
+					if (StringUtils.isBlank(cmd.getOptionValue(OPT_ICEBERG_NAMESPACE_SHORT))) {
 						namespace = Namespace.of(sourceSchema);
 					} else {
-						namespace = Namespace.of(cmd.getOptionValue("iceberg-namespace"));
+						namespace = Namespace.of(cmd.getOptionValue(OPT_ICEBERG_NAMESPACE_SHORT));
 					}
 					icebergTable = TableIdentifier.of(namespace, icebergTableName);
 					break;
@@ -705,8 +710,8 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(catalogProperties);
 
-		final Option namespace = Option.builder("N")
-				.longOpt("iceberg-namespace")
+		final Option namespace = Option.builder(OPT_ICEBERG_NAMESPACE_SHORT)
+				.longOpt(OPT_ICEBERG_NAMESPACE)
 				.hasArg(true)
 				.required(false)
 				.desc("Apache Iceberg Catalog namespace. If not specified - value of source schema will used.")
