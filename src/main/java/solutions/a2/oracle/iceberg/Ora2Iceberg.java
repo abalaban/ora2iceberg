@@ -80,7 +80,6 @@ public class Ora2Iceberg {
 
 	static final String UPLOAD_DEFAULT_MODE = "full";
 
-	//TODO - do we need to add Snowflake catalog?
 	private static final String CATALOG_IMPL_REST = "REST";
 	private static final String CATALOG_IMPL_JDBC = "JDBC";
 	private static final String CATALOG_IMPL_HADOOP = "HADOOP";
@@ -128,6 +127,16 @@ public class Ora2Iceberg {
 	private static final String OPT_ICEBERG_TABLE_SHORT = "t";
 	private static final String OPT_ICEBERG_PROPS = "iceberg-catalog-properties";
 	private static final String OPT_ICEBERG_PROPS_SHORT = "R";
+	private static final String OPT_SOURCE_JDBC_URL = "source-jdbc-url";
+	private static final String OPT_SOURCE_JDBC_URL_SHORT = "j";
+	private static final String OPT_SOURCE_JDBC_USER = "source-user";
+	private static final String OPT_SOURCE_JDBC_USER_SHORT = "u";
+	private static final String OPT_SOURCE_JDBC_PW = "source-password";
+	private static final String OPT_SOURCE_JDBC_PW_SHORT = "p";
+	private static final String OPT_WHERE_CLAUSE = "where-clause";
+	private static final String OPT_WHERE_CLAUSE_SHORT = "w";
+	private static final String OPT_DATA_TYPE_MAP = "data-type-map";
+	private static final String OPT_DATA_TYPE_MAP_SHORT = "m";
 
 	@SuppressWarnings("unchecked")
 	public static void main(String[] argv) {
@@ -273,11 +282,11 @@ public class Ora2Iceberg {
 				"\n=====================\n",
 				catalog.name(), catalogProps.get(CatalogProperties.URI));
 
-		final String sourceUrl = cmd.getOptionValue("source-jdbc-url");
-		final String sourceUser = cmd.getOptionValue("source-user");
-		final String sourcePassword = cmd.getOptionValue("source-password");
-		final String whereClause = cmd.getOptionValue("where-clause");
-		final String dataTypeMap = cmd.getOptionValue("data-type-map");
+		final String sourceUrl = cmd.getOptionValue(OPT_SOURCE_JDBC_URL_SHORT);
+		final String sourceUser = cmd.getOptionValue(OPT_SOURCE_JDBC_USER_SHORT);
+		final String sourcePassword = cmd.getOptionValue(OPT_SOURCE_JDBC_PW_SHORT);
+		final String whereClause = cmd.getOptionValue(OPT_WHERE_CLAUSE_SHORT);
+		final String dataTypeMap = cmd.getOptionValue(OPT_DATA_TYPE_MAP_SHORT);
 		Connection connection = null;
 		try {
 			connection = DriverManager.getConnection(sourceUrl, sourceUser, sourcePassword);
@@ -336,7 +345,7 @@ public class Ora2Iceberg {
 				}
 			}
 
-			if (cmd.hasOption("where-clause")) {
+			if (cmd.hasOption(OPT_WHERE_CLAUSE_SHORT)) {
 				if (!isTableOrView) {
 					LOGGER.error(
 							"\n=====================\n" +
@@ -591,24 +600,24 @@ public class Ora2Iceberg {
 	private static void setupCliOptions(final Options options) {
 
 		// Source connection
-		final Option sourceJdbcUrl = Option.builder("j")
-				.longOpt("source-jdbc-url")
+		final Option sourceJdbcUrl = Option.builder(OPT_SOURCE_JDBC_URL_SHORT)
+				.longOpt(OPT_SOURCE_JDBC_URL)
 				.hasArg(true)
 				.required(true)
 				.desc("Oracle JDBC URL of source connection")
 				.build();
 		options.addOption(sourceJdbcUrl);
 
-		final Option sourceUser = Option.builder("u")
-				.longOpt("source-user")
+		final Option sourceUser = Option.builder(OPT_SOURCE_JDBC_USER_SHORT)
+				.longOpt(OPT_SOURCE_JDBC_USER)
 				.hasArg(true)
 				.required(true)
 				.desc("Oracle user for source connection")
 				.build();
 		options.addOption(sourceUser);
 
-		final Option sourcePassword = Option.builder("p")
-				.longOpt("source-password")
+		final Option sourcePassword = Option.builder(OPT_SOURCE_JDBC_PW_SHORT)
+				.longOpt(OPT_SOURCE_JDBC_PW)
 				.hasArg(true)
 				.required(true)
 				.desc("Password for source connection")
@@ -632,8 +641,8 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(sourceObject);
 
-		final Option whereClause = Option.builder("w")
-				.longOpt("where-clause")
+		final Option whereClause = Option.builder(OPT_WHERE_CLAUSE_SHORT)
+				.longOpt(OPT_WHERE_CLAUSE)
 				.hasArg(true)
 				.required(false)
 				.desc("Optional where clause for the <source-object>. Valid only when <source-object> points to table or view.")
@@ -762,8 +771,8 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(defaultNumeric);
 
-		final Option dataTypeMap = Option.builder("m")
-				.longOpt("data-type-map")
+		final Option dataTypeMap = Option.builder(OPT_DATA_TYPE_MAP_SHORT)
+				.longOpt(OPT_DATA_TYPE_MAP)
 				.hasArg(true)
 				.required(false)
 				.desc("Custom mappings from source types to Iceberg types. Example: \"ZONE_CONTROL:NUMBER=integer; %_ID:NUMBER=long; LOCATOR_%:NUMBER=decimal(38,0)\"")
