@@ -247,26 +247,20 @@ public class Ora2Iceberg {
 					catalogProps.get(CatalogProperties.CATALOG_IMPL), cnfe.getMessage());
 			System.exit(1);
 		} catch (NoSuchMethodException | SecurityException ce) {
-			final StringBuilder sb = new StringBuilder(0x400);
-			sb.append('\n');
-			Arrays.asList(ce.getStackTrace()).forEach(ste -> sb.append(ste.toString()));
 			LOGGER.error(
 					"\n=====================\n" +
 					"Unable to find no-arg constructor for class {} specified as an Apache Iceberg catalog implementation!\n" +
 					"The following exception occured:\n{}\n{}" +
 					"\n=====================\n",
-					catalogProps.get(CatalogProperties.CATALOG_IMPL), ce.getMessage(), sb.toString());
+					catalogProps.get(CatalogProperties.CATALOG_IMPL), ce.getMessage(), ExceptionUtils.getStackTrace(ce));
 			System.exit(1);
 		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ie) {
-			final StringBuilder sb = new StringBuilder(0x400);
-			sb.append("\n");
-			Arrays.asList(ie.getStackTrace()).forEach(ste -> sb.append(ste.toString()));
 			LOGGER.error(
 					"\n=====================\n" +
 					"Unable to instantiate constructor for class {} specified as an Apache Iceberg catalog implementation!\n" +
 					"The following exception occured:\n{}\n{}" +
 					"\n=====================\n",
-					catalogProps.get(CatalogProperties.CATALOG_IMPL), ie.getMessage(), sb.toString());
+					catalogProps.get(CatalogProperties.CATALOG_IMPL), ie.getMessage(), ExceptionUtils.getStackTrace(ie));
 			System.exit(1);
 		}
 		LOGGER.info(
@@ -284,15 +278,12 @@ public class Ora2Iceberg {
 		try {
 			connection = DriverManager.getConnection(sourceUrl, sourceUser, sourcePassword);
 		} catch (SQLException sqle) {
-			final StringBuilder sb = new StringBuilder(0x400);
-			sb.append("\n");
-			Arrays.asList(sqle.getStackTrace()).forEach(ste -> sb.append(ste.toString()));
 			LOGGER.error(
 					"\n=====================\n" +
 					"Unable to connect to Oracle Database using jdbcUrl '{}' as user '{}' with password '{}'!\n" +
 					"Exception: {}{}" +
 					"\n=====================\n",
-					sourceUrl, sourceUser, sourcePassword, sqle.getMessage(), sb.toString());
+					sourceUrl, sourceUser, sourcePassword, sqle.getMessage(), ExceptionUtils.getStackTrace(sqle));
 			System.exit(1);
 		}
 
