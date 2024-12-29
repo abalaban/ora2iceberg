@@ -124,6 +124,8 @@ public class Ora2Iceberg {
 	private static final String OPT_ICEBERG_SOURCE_OBJECT_SHORT = "o";
 	private static final String OPT_ICEBERG_NAMESPACE = "iceberg-namespace";
 	private static final String OPT_ICEBERG_NAMESPACE_SHORT = "N";
+	private static final String OPT_ICEBERG_TABLE = "iceberg-table";
+	private static final String OPT_ICEBERG_TABLE_SHORT = "t";
 
 	@SuppressWarnings("unchecked")
 	public static void main(String[] argv) {
@@ -345,20 +347,20 @@ public class Ora2Iceberg {
 			}
 
 			final String icebergTableName;
-			if (StringUtils.isBlank(cmd.getOptionValue("iceberg-table")) && !isTableOrView) {
+			if (StringUtils.isBlank(cmd.getOptionValue(OPT_ICEBERG_TABLE_SHORT)) && !isTableOrView) {
 				icebergTableName = null;
 				LOGGER.error(
 						"\n=====================\n" +
-						"Must specify destination table using -T/--iceberg-table name when using SQL STATEMENT as source!" +
+						"Must specify destination table using {}/{} name when using SQL STATEMENT as source!" +
 						"\n=====================\n",
-						cmd.getOptionValue(OPT_ICEBERG_SOURCE_OBJECT_SHORT));
+						OPT_ICEBERG_TABLE_SHORT, OPT_ICEBERG_TABLE);
 				System.exit(1);
 			} else {
 				//Changing logic to use Default value in getOptionValue
 				//TODO
 				//TODO - what if is not table or view???
 				//TODO
-				icebergTableName = cmd.getOptionValue("iceberg-table", sourceObject);
+				icebergTableName = cmd.getOptionValue(OPT_ICEBERG_TABLE_SHORT, sourceObject);
 			}
 
 			final TableIdentifier icebergTable;
@@ -709,8 +711,8 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(namespace);
 
-		final Option icebergTable = Option.builder("t")
-				.longOpt("iceberg-table")
+		final Option icebergTable = Option.builder(OPT_ICEBERG_TABLE_SHORT)
+				.longOpt(OPT_ICEBERG_TABLE)
 				.hasArg(true)
 				.required(false)
 				.desc("Apache Iceberg table name. When not specified and <source-object> is view or table, name of <source-object> is used.")
