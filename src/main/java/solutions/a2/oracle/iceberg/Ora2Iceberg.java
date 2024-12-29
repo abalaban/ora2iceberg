@@ -126,6 +126,8 @@ public class Ora2Iceberg {
 	private static final String OPT_ICEBERG_NAMESPACE_SHORT = "N";
 	private static final String OPT_ICEBERG_TABLE = "iceberg-table";
 	private static final String OPT_ICEBERG_TABLE_SHORT = "t";
+	private static final String OPT_ICEBERG_PROPS = "iceberg-catalog-properties";
+	private static final String OPT_ICEBERG_PROPS_SHORT = "R";
 
 	@SuppressWarnings("unchecked")
 	public static void main(String[] argv) {
@@ -201,7 +203,7 @@ public class Ora2Iceberg {
 					System.exit(1);
 				}
 		}
-		final String[] params = cmd.getOptionValues("R");
+		final String[] params = cmd.getOptionValues(OPT_ICEBERG_PROPS_SHORT);
 		if (params != null && params.length > 0) {
 			if (params.length % 2 == 0) {
 				for (int i = 0; i < params.length; i+=2) {
@@ -695,8 +697,8 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(catalogWarehouse);
 
-		final Option catalogProperties = Option.builder("R")
-				.longOpt("iceberg-catalog-properties")
+		final Option catalogProperties = Option.builder(OPT_ICEBERG_PROPS_SHORT)
+				.longOpt(OPT_ICEBERG_PROPS)
 				.hasArgs()
 				.valueSeparator('=')
 				.desc("Additional properties for Apache Iceberg catalog implementation")
