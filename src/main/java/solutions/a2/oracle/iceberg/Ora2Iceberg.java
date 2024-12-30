@@ -580,9 +580,10 @@ public class Ora2Iceberg {
 				}
 			}
 
+			final Ora2IcebergTypeMapper mapper = new Ora2IcebergTypeMapper(defaultNumeric, dataTypeMap);
 			final StructAndDataMover sdm = new StructAndDataMover(
 					dbMetaData, sourceSchema, sourceObject, whereClause, isTableOrView, icebergTableExists,
-					catalog, icebergTable, idColumnNames, partColumnNames, maxFileSize, defaultNumeric, dataTypeMap);
+					catalog, icebergTable, idColumnNames, partColumnNames, maxFileSize, mapper);
 
 			sdm.loadData();
 

@@ -32,6 +32,7 @@ import java.util.Set;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
@@ -48,6 +49,7 @@ import org.apache.iceberg.io.OutputFileFactory;
 import org.apache.iceberg.io.PartitionedFanoutWriter;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
+import org.apache.iceberg.types.Types.DecimalType;
 import org.apache.iceberg.AppendFiles;
 import org.apache.iceberg.BaseMetastoreCatalog;
 import org.apache.iceberg.FileFormat;
@@ -103,8 +105,7 @@ public class StructAndDataMover {
 			//final Set<String> partitionDefs,
 			final List<Triple<String, String, Integer>>  partitionDefs,
 			final long targetFileSize,
-			String defaultNumeric,
-			String dataTypeMap) throws SQLException {
+			final Ora2IcebergTypeMapper mapper) throws SQLException {
 		connection = dbMetaData.getConnection();
         columnsMap = new HashMap<>();
 		this.isTableOrView = isTableOrView;
@@ -134,11 +135,6 @@ public class StructAndDataMover {
 			final Set<Integer> pkIds = new HashSet<>();
 			int columnId = 0;
 
-			if (dataTypeMap != null && !dataTypeMap.isEmpty()) {
-				Ora2IcebergTypeMapper.configureOverrides(dataTypeMap);
-			}
-			Ora2IcebergTypeMapper.configureDefaultNumberFallback(defaultNumeric);
-
 			final boolean idColumnsPresent = idColumnNames != null && !idColumnNames.isEmpty();
 			final ResultSet columns = dbMetaData.getColumns(sourceCatalog, sourceSchema, sourceObject, "%");
 			while (columns.next()) {
@@ -148,16 +144,21 @@ public class StructAndDataMover {
 				final int precision = columns.getInt("COLUMN_SIZE");
 				final int scale = columns.getInt("DECIMAL_DIGITS");
 				boolean addColumn = false;
-				final Type type;
-				final int mappedType;
 
-				Ora2IcebergTypeMapper mapper = new Ora2IcebergTypeMapper(columnName, jdbcType, precision, scale);
+				final Pair<Integer, Type> remapped = mapper.icebergType(columnName, jdbcType, precision, scale);
+				final Type type = remapped.getRight();
+				final int mappedType = remapped.getLeft();
 
-				mappedType = mapper.getMappedType();
-				type = mapper.getType();
-				final int finalPrecision = mapper.getPrecision();
-				final int finalScale = mapper.getScale();
-
+				final int finalPrecision;
+				final int finalScale;
+				if (type instanceof DecimalType) {
+					final DecimalType decimalType = (DecimalType) type;
+					finalPrecision = decimalType.precision();
+					finalScale = decimalType.scale();
+				} else {
+					finalPrecision = -1;
+					finalScale = -1;
+				}
 
 				LOGGER.info("Column map info {}:{}={}({}.{})",
 						columnName, JdbcTypes.getTypeName(jdbcType), JdbcTypes.getTypeName(mappedType), finalPrecision, finalScale);
@@ -165,7 +166,7 @@ public class StructAndDataMover {
 				addColumn = true;
 				if (addColumn) {
 					final int[] typeAndScale = new int[INFO_SIZE];
-					typeAndScale[TYPE_POS] = mappedType;
+					typeAndScale[TYPE_POS] = mappedType; //TODO !!!
 					typeAndScale[PRECISION_POS] = finalPrecision;
 					typeAndScale[SCALE_POS] = finalScale;
 					typeAndScale[NULL_POS] = nullable ? 1 : 0;

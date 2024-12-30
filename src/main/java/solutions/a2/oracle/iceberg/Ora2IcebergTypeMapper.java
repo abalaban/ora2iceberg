@@ -15,356 +15,207 @@
 package solutions.a2.oracle.iceberg;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Ora2IcebergTypeMapper {
 
-    private static final Map<String, String> exactOverrides = new HashMap<>();
-    private static final List<PatternOverride> patternOverrides = new ArrayList<>();
-    private static String defaultNumberFallback = "decimal(38,10)";
+	private static final Logger LOGGER = LoggerFactory.getLogger(Ora2IcebergTypeMapper.class);
+	private static final int ICEBERG_MAX_PRECISION = 0x26;
 
-    // Internal fields for the final result
-    private final String columnName;
-    private final int originalJdbcType;
-    private final int originalPrecision;
-    private final int originalScale;
+    private final Map<String, Triple<Integer, Integer, Integer>> exactOverrides = new HashMap<>();
+    private final Map<String, Triple<Integer, Integer, Integer>> patternOverrides = new HashMap<>();
+//    private int defaultType = java.sql.Types.NUMERIC;
+    private int defaultPrecision = ICEBERG_MAX_PRECISION;
+    private int defaultScale = 0x0A;
 
-    private int mappedType;
-    private int finalPrecision;
-    private int finalScale;
-    private Type icebergType;
+	Ora2IcebergTypeMapper(final String defaultNumeric, final String dataTypeMap) {
+		if (StringUtils.isNotBlank(dataTypeMap)) {
+			final String[] overrideArray = StringUtils.split(dataTypeMap, ';');
+			for (final String overrideSpec : overrideArray) {
+				if (StringUtils.isNotBlank(overrideSpec) && StringUtils.contains(overrideSpec, ':')) {
+					final String columnOrPattern = StringUtils.substringBefore(overrideSpec, ':');
+					final String overrideData = StringUtils.substringAfter(overrideSpec, ':');
+					if (StringUtils.isNotBlank(columnOrPattern) &&
+						StringUtils.isNotBlank(overrideData)) {
+						if (columnOrPattern.contains("%")) {
+							patternOverrides.put(columnOrPattern, override(StringUtils.substringAfter(overrideSpec, ':')));
+						} else {
+							exactOverrides.put(columnOrPattern, override(StringUtils.substringAfter(overrideSpec, ':')));
+						}
+					} else {
+						//TODO - message
+					}
+				} else {
+					//TODO - message
+				}
+			}
+		}
+		if (StringUtils.isNotBlank(defaultNumeric)) {
+			final Triple<Integer, Integer, Integer> defaultNum = override(defaultNumeric);
+			if (defaultNum != null) {
+				defaultPrecision = defaultNum.getMiddle();
+				defaultScale = defaultNum.getRight();
+			}
+		}
+	}
 
-    private static class PatternOverride {
-        String patternColumnName; // includes '%'
-        String oracleTypeName;
-        String icebergTypeSpec;
+	Pair<Integer, Type> icebergType(final String columnName, final int jdbcType, final int precision, final int scale) {
+		if (exactOverrides.containsKey(StringUtils.upperCase(columnName))) {
+			final Triple<Integer, Integer, Integer> typeDef = exactOverrides.get(StringUtils.upperCase(columnName));
+			return icebergType(typeDef.getLeft(), typeDef.getMiddle(), typeDef.getRight());
+		} else {
+			String result = null;
+			for (String pattern : patternOverrides.keySet()) {
+				if (StringUtils.startsWith(pattern, "%") &&
+						StringUtils.endsWith(columnName, StringUtils.substringAfter(pattern, '%'))) {
+					// LIKE '%SOMETHING'
+					result = pattern;
+					break;
+				}
+				if (StringUtils.endsWith(pattern, "%") &&
+						StringUtils.startsWith(columnName, StringUtils.substringBefore(pattern, '%'))) {
+					// LIKE 'SOMETHING%'
+					result = pattern;
+					break;
+				}
+			}
+			if (result != null) {
+				final Triple<Integer, Integer, Integer> typeDef = patternOverrides.get(result);
+				return icebergType(typeDef.getLeft(), typeDef.getMiddle(), typeDef.getRight());
+			} else {
+				return icebergType(jdbcType, precision, scale);
+			}
+		}  
+	}
 
-        PatternOverride(String patternColumnName, String oracleTypeName, String icebergTypeSpec) {
-            this.patternColumnName = patternColumnName;
-            this.oracleTypeName = oracleTypeName;
-            this.icebergTypeSpec = icebergTypeSpec;
-        }
-    }
-    /**
-     * Configure overrides from a single string.
-     * Example: "SUPPLIER_ID:NUMBER=long; %_ID:NUMBER=long; PRODUCT_%:NUMBER=decimal(20,6)"
-     */
-    public static void configureOverrides(String allOverrides) {
-        exactOverrides.clear();
-        patternOverrides.clear();
+	private Pair<Integer, Type> icebergType(final int jdbcType, final int precision, final int scale) {
+		switch (jdbcType) {
+		case java.sql.Types.FLOAT:
+			return new ImmutablePair<Integer, Type>(java.sql.Types.FLOAT, Types.FloatType.get());
+		case java.sql.Types.DOUBLE:
+			return new ImmutablePair<Integer, Type>(java.sql.Types.DOUBLE, Types.DoubleType.get());
+		case java.sql.Types.BOOLEAN:
+			return new ImmutablePair<Integer, Type>(java.sql.Types.BOOLEAN, Types.BooleanType.get());
+		case java.sql.Types.TINYINT:
+		case java.sql.Types.SMALLINT:
+		case java.sql.Types.INTEGER:
+			return new ImmutablePair<Integer, Type>(java.sql.Types.INTEGER, Types.IntegerType.get());
+		case java.sql.Types.BIGINT:
+			return new ImmutablePair<Integer, Type>(java.sql.Types.BIGINT, Types.LongType.get());
+		case java.sql.Types.NUMERIC:
+			if (scale == 0 && precision == 0) {
+				return new ImmutablePair<Integer, Type>(java.sql.Types.NUMERIC, Types.DecimalType.of(defaultPrecision, defaultScale));
+			} else if (scale == 0 && precision < 0x0A)
+				return new ImmutablePair<Integer, Type>(java.sql.Types.INTEGER, Types.IntegerType.get());
+			else if (scale == 0 && precision < 0x13)
+				return new ImmutablePair<Integer, Type>(java.sql.Types.BIGINT, Types.LongType.get());
+			else if (precision <= ICEBERG_MAX_PRECISION && scale < precision)
+				return new ImmutablePair<Integer, Type>(java.sql.Types.NUMERIC, Types.DecimalType.of(precision, scale));
+			else 
+				return new ImmutablePair<Integer, Type>(java.sql.Types.NUMERIC, Types.DecimalType.of(defaultPrecision, defaultScale));
+		case java.sql.Types.VARCHAR:
+			return new ImmutablePair<Integer, Type>(java.sql.Types.VARCHAR, Types.StringType.get());
+		case java.sql.Types.TIMESTAMP:
+			return new ImmutablePair<Integer, Type>(java.sql.Types.TIMESTAMP, Types.TimestampType.withoutZone());
+		case java.sql.Types.TIMESTAMP_WITH_TIMEZONE:
+			return new ImmutablePair<Integer, Type>(java.sql.Types.TIMESTAMP_WITH_TIMEZONE, Types.TimestampType.withZone());
+		case java.sql.Types.DATE:
+			return new ImmutablePair<Integer, Type>(java.sql.Types.DATE, Types.DateType.get());
+		case java.sql.Types.TIME:
+			return new ImmutablePair<Integer, Type>(java.sql.Types.TIME, Types.TimeType.get());
+		case java.sql.Types.BINARY:
+			return new ImmutablePair<Integer, Type>(java.sql.Types.BINARY, Types.BinaryType.get());
+		default:
+			return new ImmutablePair<Integer, Type>(java.sql.Types.VARCHAR, Types.StringType.get()); // fallback
+		}
+	}
 
-        if (StringUtils.isBlank(allOverrides)) {
-            return;
-        }
+	private Triple<Integer, Integer, Integer> override(final String overrideSpec) {
+		final String sourceType = StringUtils.substringBefore(overrideSpec, '=');
+		final String targetType = StringUtils.substringAfter(overrideSpec, '=');
+		if (StringUtils.equalsIgnoreCase(sourceType, "NUMBER") ||
+				StringUtils.equalsIgnoreCase(sourceType, "FLOAT")) {
+			if (StringUtils.startsWithIgnoreCase(targetType, "DECIMAL") ||
+					StringUtils.startsWithIgnoreCase(targetType, "NUMERIC") ||
+					StringUtils.startsWithIgnoreCase(targetType, "NUMBER")) {
+				final String[] overrideArgs = StringUtils.split(
+						StringUtils.substringBetween(targetType, "(", ")"),
+						',');
+				if (overrideArgs == null || overrideArgs.length != 2) {
+					LOGGER.error(
+							"\n=====================\n" +
+							"Unable to parse override '{}'! This override definition has been ignored!" +
+							"\n=====================\n",
+							overrideSpec);
+					return null;
+				} else {
+					int precision = defaultPrecision;
+					try {
+						precision = Integer.parseInt(overrideArgs[0]);
+					} catch (NumberFormatException nfe) {
+						LOGGER.error(
+								"\n=====================\n" +
+								"Unable to parse precision '{}' in override specification '{}'! Default value of {} will be used for precision!" +
+								"\n=====================\n",
+								overrideArgs[0], overrideSpec, defaultPrecision);
+					}
+					int scale = defaultScale;
+					try {
+						scale = Integer.parseInt(overrideArgs[1]);
+					} catch (NumberFormatException nfe) {
+						LOGGER.error(
+								"\n=====================\n" +
+								"Unable to parse scale '{}' in override specification '{}'! Default value of {} will be used for scale!" +
+								"\n=====================\n",
+								overrideArgs[1], overrideSpec, defaultScale);
+					}
+					if (scale >= precision) {
+						LOGGER.error(
+								"\n=====================\n" +
+								"Scale '{}' can't be greater than a precision '{}' in override specification '{}'! Default values of ({},{}) will be used for precision, scale !" +
+								"\n=====================\n",
+								scale, precision, overrideSpec, defaultPrecision, defaultScale);
+					}
+					return ImmutableTriple.of(java.sql.Types.NUMERIC, precision, scale);
+				}
+			} else if (StringUtils.equalsIgnoreCase(targetType, "LONG") ||
+					StringUtils.equalsIgnoreCase(targetType, "BIGINT")) {
+				return ImmutableTriple.of(java.sql.Types.BIGINT, 0x12, 0);
+			} else if (StringUtils.equalsIgnoreCase(targetType, "INT") ||
+				StringUtils.equalsIgnoreCase(targetType, "INTEGER")) {
+				return ImmutableTriple.of(java.sql.Types.INTEGER, 0x09, 0);
+			} else if (StringUtils.equalsIgnoreCase(targetType, "DOUBLE")) {
+				return ImmutableTriple.of(java.sql.Types.DOUBLE, 0, 0);
+			} else if (StringUtils.equalsIgnoreCase(targetType, "FLOAT")) {
+				return ImmutableTriple.of(java.sql.Types.FLOAT, 0, 0);
+			} else {
+				LOGGER.error(
+						"\n=====================\n" +
+						"Unable to parse override '{}'! this override definition is ignored!" +
+						"\n=====================\n",
+						overrideSpec);
+				return null;
+			}
+		} else {
+			LOGGER.error(
+					"\n=====================\n" +
+					"Unable to parse override '{}'! This override definition has been ignored!" +
+					"\n=====================\n",
+					overrideSpec);
+			return null;
+		}
 
-        String[] overrideArray = allOverrides.split(";");
-        for (String overrideSpec : overrideArray) {
-            overrideSpec = overrideSpec.trim();
-            if (overrideSpec.isEmpty()) {
-                continue;
-            }
-            configureSingleOverride(overrideSpec);
-        }
-    }
+	}
 
-    /**
-     * Configure a single override.
-     * Format: "COLUMN_OR_PATTERN:ORACLE_TYPE=ICEBERG_TYPE_SPEC"
-     */
-    private static void configureSingleOverride(String overrideSpec) {
-        String[] parts = overrideSpec.split("=");
-        if (parts.length != 2) {
-            throw new IllegalArgumentException("Invalid override specification: " + overrideSpec);
-        }
 
-        String leftPart = parts[0].trim();  // e.g. "SUPPLIER_ID:NUMBER" or "%_ID:NUMBER"
-        String icebergTypeSpec = parts[1].trim();
-
-        String[] leftParts = leftPart.split(":");
-        if (leftParts.length != 2) {
-            throw new IllegalArgumentException("Invalid override format before '='. " +
-                    "Expected 'COLUMN_OR_PATTERN:ORACLE_TYPE'. Got: " + leftPart);
-        }
-
-        String columnOrPattern = leftParts[0].trim();
-        String oracleType = leftParts[1].trim().toUpperCase();
-
-        if (columnOrPattern.contains("%")) {
-            patternOverrides.add(new PatternOverride(columnOrPattern, oracleType, icebergTypeSpec));
-        } else {
-            exactOverrides.put(columnOrPattern.toUpperCase() + ":" + oracleType, icebergTypeSpec);
-        }
-    }
-
-    /**
-     * Configure default fallback for NUMBER when unknown precision/scale.
-     */
-    public static void configureDefaultNumberFallback(String fallbackSpec) {
-        defaultNumberFallback = fallbackSpec;
-    }
-
-    /**
-     * Constructor that takes column metadata as input.
-     */
-    public Ora2IcebergTypeMapper(String columnName, int jdbcType, int precision, int scale) {
-        this.columnName = columnName;
-        this.originalJdbcType = jdbcType;
-        this.originalPrecision = precision;
-        this.originalScale = scale;
-        determineFinalMapping();
-    }
-
-    private void determineFinalMapping() {
-        // Determine the Oracle type name from jdbcType for override matching
-        String oracleTypeName = guessOracleTypeName(originalJdbcType);
-
-        // Try exact override first
-        String exactKey = columnName.toUpperCase() + ":" + oracleTypeName;
-        String overrideTypeSpec = exactOverrides.get(exactKey);
-
-        if (overrideTypeSpec == null) {
-            // Try pattern overrides
-            for (PatternOverride po : patternOverrides) {
-                if (po.oracleTypeName.equalsIgnoreCase(oracleTypeName)
-                        && matchesPattern(columnName, po.patternColumnName)) {
-                    overrideTypeSpec = po.icebergTypeSpec;
-                    break;
-                }
-            }
-        }
-
-        if (overrideTypeSpec != null) {
-            // Apply override logic to mappedType, precision, scale
-            applyOverride(overrideTypeSpec);
-        } else {
-            // No override, use default logic
-            applyDefaultLogic(oracleTypeName);
-        }
-
-        // Determine icebergType from final mappedType, finalPrecision, finalScale
-        this.icebergType = toIcebergType(this.mappedType, this.finalPrecision, this.finalScale);
-    }
-
-    private void applyOverride(String overrideSpec) {
-        // Override affects mappedType, precision, scale
-        overrideSpec = overrideSpec.toLowerCase().trim();
-
-        if (overrideSpec.startsWith("decimal(")) {
-            // decimal(p,s)
-            String inside = overrideSpec.substring("decimal(".length(), overrideSpec.length() - 1);
-            String[] parts = inside.split(",");
-            int p = Integer.parseInt(parts[0].trim());
-            int s = Integer.parseInt(parts[1].trim());
-            this.mappedType = java.sql.Types.NUMERIC;
-            this.finalPrecision = p;
-            this.finalScale = s;
-        } else if (overrideSpec.equals("long")) {
-            this.mappedType = java.sql.Types.BIGINT;
-            this.finalPrecision = Integer.MIN_VALUE;
-            this.finalScale = Integer.MIN_VALUE;
-        } else if (overrideSpec.equals("integer")) {
-            this.mappedType = java.sql.Types.INTEGER;
-            this.finalPrecision = Integer.MIN_VALUE;
-            this.finalScale = Integer.MIN_VALUE;
-        } else if (overrideSpec.equals("float")) {
-            this.mappedType = java.sql.Types.FLOAT;
-            this.finalPrecision = Integer.MIN_VALUE;
-            this.finalScale = Integer.MIN_VALUE;
-        } else if (overrideSpec.equals("double")) {
-            this.mappedType = java.sql.Types.DOUBLE;
-            this.finalPrecision = Integer.MIN_VALUE;
-            this.finalScale = Integer.MIN_VALUE;
-        } else if (overrideSpec.equals("string")) {
-            this.mappedType = java.sql.Types.VARCHAR;
-            this.finalPrecision = Integer.MIN_VALUE;
-            this.finalScale = Integer.MIN_VALUE;
-        } else if (overrideSpec.equals("boolean")) {
-            this.mappedType = java.sql.Types.BOOLEAN;
-            this.finalPrecision = Integer.MIN_VALUE;
-            this.finalScale = Integer.MIN_VALUE;
-        } else if (overrideSpec.equals("binary")) {
-            this.mappedType = java.sql.Types.BINARY;
-            this.finalPrecision = Integer.MIN_VALUE;
-            this.finalScale = Integer.MIN_VALUE;
-        } else if (overrideSpec.equals("timestamp")) {
-            this.mappedType = java.sql.Types.TIMESTAMP;
-            this.finalPrecision = Integer.MIN_VALUE;
-            this.finalScale = Integer.MIN_VALUE;
-        } else if (overrideSpec.equals("timestamptz")) {
-            this.mappedType = java.sql.Types.TIMESTAMP_WITH_TIMEZONE;
-            this.finalPrecision = Integer.MIN_VALUE;
-            this.finalScale = Integer.MIN_VALUE;
-        } else if (overrideSpec.equals("date")) {
-            this.mappedType = java.sql.Types.DATE;
-            this.finalPrecision = Integer.MIN_VALUE;
-            this.finalScale = Integer.MIN_VALUE;
-        } else if (overrideSpec.equals("time")) {
-            this.mappedType = java.sql.Types.TIME;
-            this.finalPrecision = Integer.MIN_VALUE;
-            this.finalScale = Integer.MIN_VALUE;
-        } else {
-            throw new IllegalArgumentException("Unsupported override type spec: " + overrideSpec);
-        }
-    }
-
-    private void applyDefaultLogic(String oracleTypeName) {
-        switch (oracleTypeName) {
-            case "NUMBER":
-            case "FLOAT":
-            case "BINARY_FLOAT":
-            case "BINARY_DOUBLE":
-                if (originalPrecision > 0 && originalScale >= 0) {
-                    this.mappedType = java.sql.Types.NUMERIC;
-                    //TODO
-                    this.finalPrecision = originalPrecision <= 0 ? 38 : originalPrecision;
-                    this.finalScale = originalScale < 0 ? 10 : originalScale;
-                } else {
-                    // Parse defaultNumberFallback
-                    applyOverride(defaultNumberFallback);
-                }
-                break;
-
-            case "VARCHAR2":
-            case "CHAR":
-            case "NCHAR":
-            case "NVARCHAR2":
-            case "CLOB":
-            case "NCLOB":
-                this.mappedType = java.sql.Types.VARCHAR;
-                this.finalPrecision = Integer.MIN_VALUE;
-                this.finalScale = Integer.MIN_VALUE;
-                break;
-
-            case "DATE":
-                this.mappedType = java.sql.Types.TIMESTAMP;
-                this.finalPrecision = Integer.MIN_VALUE;
-                this.finalScale = Integer.MIN_VALUE;
-                break;
-
-            case "TIMESTAMP":
-                this.mappedType = java.sql.Types.TIMESTAMP;
-                this.finalPrecision = Integer.MIN_VALUE;
-                this.finalScale = Integer.MIN_VALUE;
-                break;
-
-            case "TIMESTAMP WITH TIME ZONE":
-            case "TIMESTAMP WITH LOCAL TIME ZONE":
-                this.mappedType = java.sql.Types.TIMESTAMP_WITH_TIMEZONE;
-                this.finalPrecision = Integer.MIN_VALUE;
-                this.finalScale = Integer.MIN_VALUE;
-                break;
-
-            case "RAW":
-            case "BLOB":
-            case "BFILE":
-                this.mappedType = java.sql.Types.BINARY;
-                this.finalPrecision = Integer.MIN_VALUE;
-                this.finalScale = Integer.MIN_VALUE;
-                break;
-
-            default:
-                this.mappedType = java.sql.Types.VARCHAR;
-                this.finalPrecision = Integer.MIN_VALUE;
-                this.finalScale = Integer.MIN_VALUE;
-                break;
-        }
-    }
-
-    private Type toIcebergType(int jdbcType, int p, int s) {
-        switch (jdbcType) {
-            case java.sql.Types.BOOLEAN:
-                return Types.BooleanType.get();
-            case java.sql.Types.INTEGER:
-                return Types.IntegerType.get();
-            case java.sql.Types.BIGINT:
-                return Types.LongType.get();
-            case java.sql.Types.FLOAT:
-                return Types.FloatType.get();
-            case java.sql.Types.DOUBLE:
-                return Types.DoubleType.get();
-            case java.sql.Types.VARCHAR:
-                return Types.StringType.get();
-            case java.sql.Types.TIMESTAMP:
-                return Types.TimestampType.withoutZone();
-            case java.sql.Types.TIMESTAMP_WITH_TIMEZONE:
-                return Types.TimestampType.withZone();
-            case java.sql.Types.DATE:
-                return Types.DateType.get();
-            case java.sql.Types.TIME:
-                return Types.TimeType.get();
-            case java.sql.Types.BINARY:
-                return Types.BinaryType.get();
-            case java.sql.Types.NUMERIC:
-                int decPrecision = (p <= 0) ? 38 : p;
-                int decScale = (s < 0) ? 10 : s;
-                return Types.DecimalType.of(decPrecision, decScale);
-            default:
-                return Types.StringType.get(); // fallback
-        }
-    }
-
-    private static boolean matchesPattern(String columnName, String pattern) {
-        columnName = columnName.toUpperCase();
-        pattern = pattern.toUpperCase();
-
-        if (pattern.startsWith("%") && pattern.endsWith("%")) {
-            throw new IllegalArgumentException("Only one wildcard (%) at start or end is supported: " + pattern);
-        }
-
-        if (pattern.startsWith("%")) {
-            String endPattern = pattern.substring(1);
-            return columnName.endsWith(endPattern);
-        } else if (pattern.endsWith("%")) {
-            String startPattern = pattern.substring(0, pattern.length() - 1);
-            return columnName.startsWith(startPattern);
-        } else {
-            return columnName.equals(pattern);
-        }
-    }
-
-    private static String guessOracleTypeName(int jdbcType) {
-        // Map known JDBC types to Oracle type names for override matching
-        switch (jdbcType) {
-            case java.sql.Types.NUMERIC:
-                return "NUMBER";
-            case java.sql.Types.VARCHAR:
-                return "VARCHAR2";
-            case java.sql.Types.TIMESTAMP:
-                return "TIMESTAMP";
-            case java.sql.Types.TIMESTAMP_WITH_TIMEZONE:
-                return "TIMESTAMP WITH TIME ZONE";
-            case java.sql.Types.BINARY:
-                return "RAW";
-            case java.sql.Types.BIGINT:
-            case java.sql.Types.INTEGER:
-            case java.sql.Types.BOOLEAN:
-            case java.sql.Types.FLOAT:
-            case java.sql.Types.DOUBLE:
-                return "NUMBER";
-            default:
-                return "OTHER";
-        }
-    }
-
-    public int getMappedType() {
-        return mappedType;
-    }
-
-    public Type getType() {
-        return icebergType;
-    }
-
-    public int getPrecision() {
-        return finalPrecision;
-    }
-
-    public int getScale() {
-        return finalScale;
-    }
 }
