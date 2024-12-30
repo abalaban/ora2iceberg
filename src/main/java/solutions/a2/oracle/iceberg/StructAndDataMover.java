@@ -432,6 +432,9 @@ public class StructAndDataMover {
 						case java.sql.Types.VARCHAR:
 							record.setField(entry.getKey(), rs.getString(entry.getKey()));
 							break;
+						case java.sql.Types.NVARCHAR:
+							record.setField(entry.getKey(), rs.getNString(entry.getKey()));
+							break;
 					}
 				}
 				columnsMap.forEach((columnName, jdbcType) -> {

@@ -27,6 +27,23 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 
+import static java.sql.Types.FLOAT;
+import static java.sql.Types.DOUBLE;
+import static java.sql.Types.BOOLEAN;
+import static java.sql.Types.TINYINT;
+import static java.sql.Types.SMALLINT;
+import static java.sql.Types.INTEGER;
+import static java.sql.Types.BIGINT;
+import static java.sql.Types.NUMERIC;
+import static java.sql.Types.VARCHAR;
+import static java.sql.Types.NVARCHAR;
+import static java.sql.Types.TIMESTAMP;
+import static java.sql.Types.TIMESTAMP_WITH_TIMEZONE;
+import static java.sql.Types.DATE;
+import static java.sql.Types.TIME;
+import static java.sql.Types.BINARY;
+
+
 public class Ora2IcebergTypeMapper {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(Ora2IcebergTypeMapper.class);
@@ -34,7 +51,7 @@ public class Ora2IcebergTypeMapper {
 
     private final Map<String, Triple<Integer, Integer, Integer>> exactOverrides = new HashMap<>();
     private final Map<String, Triple<Integer, Integer, Integer>> patternOverrides = new HashMap<>();
-//    private int defaultType = java.sql.Types.NUMERIC;
+//    private int defaultType = NUMERIC;
     private int defaultPrecision = ICEBERG_MAX_PRECISION;
     private int defaultScale = 0x0A;
 
@@ -100,43 +117,45 @@ public class Ora2IcebergTypeMapper {
 
 	private Pair<Integer, Type> icebergType(final int jdbcType, final int precision, final int scale) {
 		switch (jdbcType) {
-		case java.sql.Types.FLOAT:
-			return new ImmutablePair<Integer, Type>(java.sql.Types.FLOAT, Types.FloatType.get());
-		case java.sql.Types.DOUBLE:
-			return new ImmutablePair<Integer, Type>(java.sql.Types.DOUBLE, Types.DoubleType.get());
-		case java.sql.Types.BOOLEAN:
-			return new ImmutablePair<Integer, Type>(java.sql.Types.BOOLEAN, Types.BooleanType.get());
-		case java.sql.Types.TINYINT:
-		case java.sql.Types.SMALLINT:
-		case java.sql.Types.INTEGER:
-			return new ImmutablePair<Integer, Type>(java.sql.Types.INTEGER, Types.IntegerType.get());
-		case java.sql.Types.BIGINT:
-			return new ImmutablePair<Integer, Type>(java.sql.Types.BIGINT, Types.LongType.get());
-		case java.sql.Types.NUMERIC:
+		case FLOAT:
+			return new ImmutablePair<Integer, Type>(FLOAT, Types.FloatType.get());
+		case DOUBLE:
+			return new ImmutablePair<Integer, Type>(DOUBLE, Types.DoubleType.get());
+		case BOOLEAN:
+			return new ImmutablePair<Integer, Type>(BOOLEAN, Types.BooleanType.get());
+		case TINYINT:
+		case SMALLINT:
+		case INTEGER:
+			return new ImmutablePair<Integer, Type>(INTEGER, Types.IntegerType.get());
+		case BIGINT:
+			return new ImmutablePair<Integer, Type>(BIGINT, Types.LongType.get());
+		case NUMERIC:
 			if (scale == 0 && precision == 0) {
-				return new ImmutablePair<Integer, Type>(java.sql.Types.NUMERIC, Types.DecimalType.of(defaultPrecision, defaultScale));
+				return new ImmutablePair<Integer, Type>(NUMERIC, Types.DecimalType.of(defaultPrecision, defaultScale));
 			} else if (scale == 0 && precision < 0x0A)
-				return new ImmutablePair<Integer, Type>(java.sql.Types.INTEGER, Types.IntegerType.get());
+				return new ImmutablePair<Integer, Type>(INTEGER, Types.IntegerType.get());
 			else if (scale == 0 && precision < 0x13)
-				return new ImmutablePair<Integer, Type>(java.sql.Types.BIGINT, Types.LongType.get());
+				return new ImmutablePair<Integer, Type>(BIGINT, Types.LongType.get());
 			else if (precision <= ICEBERG_MAX_PRECISION && scale < precision)
-				return new ImmutablePair<Integer, Type>(java.sql.Types.NUMERIC, Types.DecimalType.of(precision, scale));
+				return new ImmutablePair<Integer, Type>(NUMERIC, Types.DecimalType.of(precision, scale));
 			else 
-				return new ImmutablePair<Integer, Type>(java.sql.Types.NUMERIC, Types.DecimalType.of(defaultPrecision, defaultScale));
-		case java.sql.Types.VARCHAR:
-			return new ImmutablePair<Integer, Type>(java.sql.Types.VARCHAR, Types.StringType.get());
-		case java.sql.Types.TIMESTAMP:
-			return new ImmutablePair<Integer, Type>(java.sql.Types.TIMESTAMP, Types.TimestampType.withoutZone());
-		case java.sql.Types.TIMESTAMP_WITH_TIMEZONE:
-			return new ImmutablePair<Integer, Type>(java.sql.Types.TIMESTAMP_WITH_TIMEZONE, Types.TimestampType.withZone());
-		case java.sql.Types.DATE:
-			return new ImmutablePair<Integer, Type>(java.sql.Types.DATE, Types.DateType.get());
-		case java.sql.Types.TIME:
-			return new ImmutablePair<Integer, Type>(java.sql.Types.TIME, Types.TimeType.get());
-		case java.sql.Types.BINARY:
-			return new ImmutablePair<Integer, Type>(java.sql.Types.BINARY, Types.BinaryType.get());
+				return new ImmutablePair<Integer, Type>(NUMERIC, Types.DecimalType.of(defaultPrecision, defaultScale));
+		case VARCHAR:
+			return new ImmutablePair<Integer, Type>(VARCHAR, Types.StringType.get());
+		case NVARCHAR:
+			return new ImmutablePair<Integer, Type>(NVARCHAR, Types.StringType.get());
+		case TIMESTAMP:
+			return new ImmutablePair<Integer, Type>(TIMESTAMP, Types.TimestampType.withoutZone());
+		case TIMESTAMP_WITH_TIMEZONE:
+			return new ImmutablePair<Integer, Type>(TIMESTAMP_WITH_TIMEZONE, Types.TimestampType.withZone());
+		case DATE:
+			return new ImmutablePair<Integer, Type>(DATE, Types.DateType.get());
+		case TIME:
+			return new ImmutablePair<Integer, Type>(TIME, Types.TimeType.get());
+		case BINARY:
+			return new ImmutablePair<Integer, Type>(BINARY, Types.BinaryType.get());
 		default:
-			return new ImmutablePair<Integer, Type>(java.sql.Types.VARCHAR, Types.StringType.get()); // fallback
+			return new ImmutablePair<Integer, Type>(VARCHAR, Types.StringType.get()); // fallback
 		}
 	}
 
@@ -186,18 +205,18 @@ public class Ora2IcebergTypeMapper {
 								"\n=====================\n",
 								scale, precision, overrideSpec, defaultPrecision, defaultScale);
 					}
-					return ImmutableTriple.of(java.sql.Types.NUMERIC, precision, scale);
+					return ImmutableTriple.of(NUMERIC, precision, scale);
 				}
 			} else if (StringUtils.equalsIgnoreCase(targetType, "LONG") ||
 					StringUtils.equalsIgnoreCase(targetType, "BIGINT")) {
-				return ImmutableTriple.of(java.sql.Types.BIGINT, 0x12, 0);
+				return ImmutableTriple.of(BIGINT, 0x12, 0);
 			} else if (StringUtils.equalsIgnoreCase(targetType, "INT") ||
 				StringUtils.equalsIgnoreCase(targetType, "INTEGER")) {
-				return ImmutableTriple.of(java.sql.Types.INTEGER, 0x09, 0);
+				return ImmutableTriple.of(INTEGER, 0x09, 0);
 			} else if (StringUtils.equalsIgnoreCase(targetType, "DOUBLE")) {
-				return ImmutableTriple.of(java.sql.Types.DOUBLE, 0, 0);
+				return ImmutableTriple.of(DOUBLE, 0, 0);
 			} else if (StringUtils.equalsIgnoreCase(targetType, "FLOAT")) {
-				return ImmutableTriple.of(java.sql.Types.FLOAT, 0, 0);
+				return ImmutableTriple.of(FLOAT, 0, 0);
 			} else {
 				LOGGER.error(
 						"\n=====================\n" +
