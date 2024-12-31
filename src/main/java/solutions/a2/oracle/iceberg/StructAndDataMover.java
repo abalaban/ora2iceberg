@@ -362,7 +362,8 @@ public class StructAndDataMover {
 									final int intVal = oraInt.intValue(); 
 									record.setField(entry.getKey(), intVal);
 									} catch (SQLException sqle) {
-										if (sqle.getErrorCode() == ORA_17026) {
+										if (sqle.getErrorCode() == ORA_17026 ||
+												StringUtils.containsIgnoreCase(sqle.getMessage(), "Overflow Exception")) {
 											final StringBuilder sb = new StringBuilder(0x400);
 											sb
 												.append("\n=====================\n")
@@ -387,7 +388,7 @@ public class StructAndDataMover {
 										} else {
 											LOGGER.error(
 													"\n=====================\n" +
-													"SQL error code={}, SQL state='{}', class=''!" +
+													"SQL error code={}, SQL state='{}', class='{}'!" +
 													"\n=====================\n",
 													sqle.getErrorCode(), sqle.getSQLState(), sqle.getClass().getName());
 											throw sqle;
@@ -404,7 +405,8 @@ public class StructAndDataMover {
 									final long longVal = oraLong.longValue(); 
 									record.setField(entry.getKey(), longVal);
 									} catch (SQLException sqle) {
-										if (sqle.getErrorCode() == ORA_17026) {
+										if (sqle.getErrorCode() == ORA_17026 ||
+												StringUtils.containsIgnoreCase(sqle.getMessage(), "Overflow Exception")) {
 											final StringBuilder sb = new StringBuilder(0x400);
 											sb
 												.append("\n=====================\n")
@@ -429,7 +431,7 @@ public class StructAndDataMover {
 										} else {
 											LOGGER.error(
 													"\n=====================\n" +
-													"SQL error code={}, SQL state='{}', class=''!" +
+													"SQL error code={}, SQL state='{}', class='{}'!" +
 													"\n=====================\n",
 													sqle.getErrorCode(), sqle.getSQLState(), sqle.getClass().getName());
 											throw sqle;
