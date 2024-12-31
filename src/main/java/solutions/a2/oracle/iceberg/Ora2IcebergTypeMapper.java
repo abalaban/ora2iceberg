@@ -60,7 +60,7 @@ public class Ora2IcebergTypeMapper {
 			final String[] overrideArray = StringUtils.split(dataTypeMap, ';');
 			for (final String overrideSpec : overrideArray) {
 				if (StringUtils.isNotBlank(overrideSpec) && StringUtils.contains(overrideSpec, ':')) {
-					final String columnOrPattern = StringUtils.substringBefore(overrideSpec, ':');
+					final String columnOrPattern = StringUtils.trim(StringUtils.substringBefore(overrideSpec, ':'));
 					final String overrideData = StringUtils.substringAfter(overrideSpec, ':');
 					if (StringUtils.isNotBlank(columnOrPattern) &&
 						StringUtils.isNotBlank(overrideData)) {
@@ -130,9 +130,9 @@ public class Ora2IcebergTypeMapper {
 		case BIGINT:
 			return new ImmutablePair<Integer, Type>(BIGINT, Types.LongType.get());
 		case NUMERIC:
-			if (scale == 0 && precision == 0) {
+			if ((scale == 0 && precision == 0) || (scale < 0 && precision < 1))
 				return new ImmutablePair<Integer, Type>(NUMERIC, Types.DecimalType.of(defaultPrecision, defaultScale));
-			} else if (scale == 0 && precision < 0x0A)
+			else if (scale == 0 && precision < 0x0A)
 				return new ImmutablePair<Integer, Type>(INTEGER, Types.IntegerType.get());
 			else if (scale == 0 && precision < 0x13)
 				return new ImmutablePair<Integer, Type>(BIGINT, Types.LongType.get());
