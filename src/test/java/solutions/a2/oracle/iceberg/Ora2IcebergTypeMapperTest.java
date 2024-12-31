@@ -23,13 +23,26 @@ import org.apache.iceberg.types.Types.IntegerType;
 import org.apache.iceberg.types.Types.LongType;
 import org.junit.jupiter.api.Test;
 
+import java.sql.Types;
+
 /**
  *  
  * @author <a href="mailto:averemee@a2.solutions">Aleksei Veremeev</a>
  * 
  */
 public class Ora2IcebergTypeMapperTest {
-	
+	@Test
+	public void testNumber2Integer() {
+		Ora2IcebergTypeMapper mapper = new Ora2IcebergTypeMapper(
+				null, "%_ID:NUMBER=LONG; %ATED_BY:NUMBER=INTEGER");
+
+				Pair<Integer, Type> lastUpdatedBy = mapper.icebergType("CREATED_BY", java.sql.Types.NUMERIC, 0, 0);
+				Type lastUpdatedByType = lastUpdatedBy.getRight();
+				System.out.println(lastUpdatedByType.toString());
+				assertTrue(lastUpdatedByType instanceof IntegerType);
+				assertEquals(lastUpdatedBy.getLeft(), Types.INTEGER);
+
+	}
 
 	@Test
 	public void test() {

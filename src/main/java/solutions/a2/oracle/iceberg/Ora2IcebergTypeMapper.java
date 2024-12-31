@@ -60,7 +60,7 @@ public class Ora2IcebergTypeMapper {
 			final String[] overrideArray = StringUtils.split(dataTypeMap, ';');
 			for (final String overrideSpec : overrideArray) {
 				if (StringUtils.isNotBlank(overrideSpec) && StringUtils.contains(overrideSpec, ':')) {
-					final String columnOrPattern = StringUtils.substringBefore(overrideSpec, ':');
+					final String columnOrPattern = StringUtils.trim(StringUtils.substringBefore(overrideSpec, ':'));
 					final String overrideData = StringUtils.substringAfter(overrideSpec, ':');
 					if (StringUtils.isNotBlank(columnOrPattern) &&
 						StringUtils.isNotBlank(overrideData)) {

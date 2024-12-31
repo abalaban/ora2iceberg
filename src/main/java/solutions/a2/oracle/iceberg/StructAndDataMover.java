@@ -89,6 +89,7 @@ public class StructAndDataMover {
 	private final String whereClause;
 	private final Map<String, int[]> columnsMap;
 	private final long targetFileSize;
+	private final boolean icebergTableExists;
 	private Table table;
 
 	StructAndDataMover(
@@ -109,6 +110,7 @@ public class StructAndDataMover {
 		connection = dbMetaData.getConnection();
         columnsMap = new HashMap<>();
 		this.isTableOrView = isTableOrView;
+		this.icebergTableExists = icebergTableExists;
 		this.sourceSchema = sourceSchema;
 		this.sourceObject = sourceObject;
 		this.targetFileSize = targetFileSize;
