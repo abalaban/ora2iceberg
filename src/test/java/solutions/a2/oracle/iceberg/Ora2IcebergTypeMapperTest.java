@@ -34,13 +34,19 @@ public class Ora2IcebergTypeMapperTest {
 	@Test
 	public void testNumber2Integer() {
 		Ora2IcebergTypeMapper mapper = new Ora2IcebergTypeMapper(
-				null, "%_ID:NUMBER=LONG; %ATED_BY:NUMBER=INTEGER");
+		null, "%_ID:NUMBER=LONG; %ATED_BY:NUMBER=INTEGER");
 
-				Pair<Integer, Type> lastUpdatedBy = mapper.icebergType("CREATED_BY", java.sql.Types.NUMERIC, 0, 0);
-				Type lastUpdatedByType = lastUpdatedBy.getRight();
-				System.out.println(lastUpdatedByType.toString());
-				assertTrue(lastUpdatedByType instanceof IntegerType);
-				assertEquals(lastUpdatedBy.getLeft(), Types.INTEGER);
+		Pair<Integer, Type> lastUpdatedBy = mapper.icebergType("CREATED_BY", java.sql.Types.NUMERIC, 0, 0);
+		Type lastUpdatedByType = lastUpdatedBy.getRight();
+		System.out.println(lastUpdatedByType.toString());
+		assertTrue(lastUpdatedByType instanceof IntegerType);
+		assertEquals(lastUpdatedBy.getLeft(), Types.INTEGER);
+
+		Pair<Integer, Type> lastUpdateLogin = mapper.icebergType("LAST_UPDATE_LOGIN", java.sql.Types.NUMERIC, 0, 0);
+		Type lastUpdateLoginType = lastUpdateLogin.getRight();
+		System.out.println("lastUpdateLoginType: "+lastUpdateLoginType.toString());
+		assertTrue(lastUpdateLoginType instanceof DecimalType);
+		assertEquals(lastUpdateLogin.getLeft(), java.sql.Types.NUMERIC);
 
 	}
 

@@ -145,6 +145,9 @@ public class StructAndDataMover {
 				final boolean nullable = StringUtils.equals("YES", columns.getString("IS_NULLABLE"));
 				final int precision = columns.getInt("COLUMN_SIZE");
 				final int scale = columns.getInt("DECIMAL_DIGITS");
+				LOGGER.debug("Source Metadata info {}:{}({},{})",
+						columnName, JdbcTypes.getTypeName(jdbcType), precision, scale);
+
 				boolean addColumn = false;
 
 				final Pair<Integer, Type> remapped = mapper.icebergType(columnName, jdbcType, precision, scale);
@@ -153,16 +156,18 @@ public class StructAndDataMover {
 
 				final int finalPrecision;
 				final int finalScale;
+
+
 				if (type instanceof DecimalType) {
 					final DecimalType decimalType = (DecimalType) type;
 					finalPrecision = decimalType.precision();
 					finalScale = decimalType.scale();
 				} else {
-					finalPrecision = -1;
-					finalScale = -1;
+					finalPrecision = precision;
+					finalScale = scale;
 				}
 
-				LOGGER.info("Column map info {}:{}={}({}.{})",
+				LOGGER.info("Column map info {}:{}={}({},{})",
 						columnName, JdbcTypes.getTypeName(jdbcType), JdbcTypes.getTypeName(mappedType), finalPrecision, finalScale);
 
 				addColumn = true;
