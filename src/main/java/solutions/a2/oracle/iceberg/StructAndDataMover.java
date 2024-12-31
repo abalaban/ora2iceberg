@@ -385,6 +385,11 @@ public class StructAndDataMover {
 												throw sqle;
 											}
 										} else {
+											LOGGER.error(
+													"\n=====================\n" +
+													"SQL error code={}, SQL state='{}', class=''!" +
+													"\n=====================\n",
+													sqle.getErrorCode(), sqle.getSQLState(), sqle.getClass().getName());
 											throw sqle;
 										}
 								}
@@ -422,6 +427,11 @@ public class StructAndDataMover {
 												throw sqle;
 											}
 										} else {
+											LOGGER.error(
+													"\n=====================\n" +
+													"SQL error code={}, SQL state='{}', class=''!" +
+													"\n=====================\n",
+													sqle.getErrorCode(), sqle.getSQLState(), sqle.getClass().getName());
 											throw sqle;
 										}
 								}
