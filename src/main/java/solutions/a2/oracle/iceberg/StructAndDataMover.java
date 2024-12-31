@@ -69,6 +69,9 @@ import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_MONTH;
 import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_DAY;
 import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_HOUR;
 
+import static solutions.a2.oracle.iceberg.OraDatabaseUtils.ORA_17026;
+import static solutions.a2.oracle.iceberg.OraDatabaseUtils.rawToHex;
+
 /**
  *
  * @author <a href="mailto:averemee@a2.solutions">Aleksei Veremeev</a>
@@ -351,14 +354,82 @@ public class StructAndDataMover {
 							record.setField(entry.getKey(), rs.getBoolean(entry.getKey()));
 							break;
 						case java.sql.Types.INTEGER:
-							record.setField(entry.getKey(), rs.getInt(entry.getKey()));
+							final NUMBER oraInt = rs.getNUMBER(entry.getKey());
+							if (rs.wasNull()) {
+								record.setField(entry.getKey(), null);
+							} else {
+								try {
+									final int intVal = oraInt.intValue(); 
+									record.setField(entry.getKey(), intVal);
+									} catch (SQLException sqle) {
+										if (sqle.getErrorCode() == ORA_17026) {
+											final StringBuilder sb = new StringBuilder(0x400);
+											sb
+												.append("\n=====================\n")
+												.append("Unable to convert Oracle NUMBER column ")
+												.append(entry.getKey())
+												.append(" with value ")
+												.append(oraInt.stringValue())
+												.append(" to INTEGER!")
+												.append("\nDump value of NUMBER column =")
+												.append(rawToHex(oraInt.getBytes()));
+											if (entry.getValue()[NULL_POS] == 1) {
+												record.setField(entry.getKey(), null);
+												sb
+													.append("\nSetting value to NULL")
+													.append("\n=====================\n");
+												LOGGER.warn(sb.toString());
+											} else {
+												sb.append("\n=====================\n");
+												LOGGER.error(sb.toString());
+												throw sqle;
+											}
+										} else {
+											throw sqle;
+										}
+								}
+							}
 							break;
 						case java.sql.Types.BIGINT:
-							record.setField(entry.getKey(), rs.getLong(entry.getKey()));
+							final NUMBER oraLong = rs.getNUMBER(entry.getKey());
+							if (rs.wasNull()) {
+								record.setField(entry.getKey(), null);
+							} else {
+								try {
+									final long longVal = oraLong.longValue(); 
+									record.setField(entry.getKey(), longVal);
+									} catch (SQLException sqle) {
+										if (sqle.getErrorCode() == ORA_17026) {
+											final StringBuilder sb = new StringBuilder(0x400);
+											sb
+												.append("\n=====================\n")
+												.append("Unable to convert Oracle NUMBER column ")
+												.append(entry.getKey())
+												.append(" with value ")
+												.append(oraLong.stringValue())
+												.append(" to LONG/BIGINT!")
+												.append("\nDump value of NUMBER column =")
+												.append(rawToHex(oraLong.getBytes()));
+											if (entry.getValue()[NULL_POS] == 1) {
+												record.setField(entry.getKey(), null);
+												sb
+													.append("\nSetting value to NULL")
+													.append("\n=====================\n");
+												LOGGER.warn(sb.toString());
+											} else {
+												sb.append("\n=====================\n");
+												LOGGER.error(sb.toString());
+												throw sqle;
+											}
+										} else {
+											throw sqle;
+										}
+								}
+							}
 							break;
 						case java.sql.Types.NUMERIC:
 							final NUMBER oraNum = rs.getNUMBER(entry.getKey());
-							if (oraNum == null) {
+							if (rs.wasNull()) {
 								record.setField(entry.getKey(), null);
 							} else {
 								if (oraNum.isInf() || oraNum.isNegInf()) {
@@ -391,13 +462,6 @@ public class StructAndDataMover {
 											//TODO
 											//TODO - key values in output!!!
 											//TODO
-											final StringBuilder oraNumFmt = new StringBuilder();
-											final byte[] oraNumBytes = oraNum.getBytes();
-											for (int i = 0; i < oraNumBytes.length; i++) {
-												oraNumFmt
-														.append(' ')
-														.append(String.format("%02x", Byte.toUnsignedInt(oraNumBytes[i])));
-											}
 											LOGGER.warn(
 													"\n=====================\n" +
 													"Precision {} of Oracle NUMBER column {} with value '{}' is greater than allowed precision {}!\n" +
@@ -406,7 +470,7 @@ public class StructAndDataMover {
 													"\n=====================\n",
 													bd.precision(), entry.getKey(),
 													oraNum.stringValue(), entry.getValue()[PRECISION_POS],
-													oraNumFmt.toString(),
+													rawToHex(oraNum.getBytes()),
 													entry.getValue()[NULL_POS] == 1 ? "NULL" : "" + Float.MAX_VALUE);
 											if (entry.getValue()[NULL_POS] == 1) {
 												record.setField(entry.getKey(), null);
