@@ -190,7 +190,13 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-aws
 	implementation("org.apache.iceberg:iceberg-aws:$icebergVersion")
 	// https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-snowflake
-	implementation("org.apache.iceberg:iceberg-snowflake:$icebergVersion")
+	implementation("org.apache.iceberg:iceberg-snowflake:$icebergVersion") {
+		exclude group: 'net.snowflake', module: 'snowflake-jdbc'
+	}
+
+	def snowflakeJdbcVersion = "3.21.0"
+	// https://mvnrepository.com/artifact/net.snowflake/snowflake-jdbc
+	implementation("net.snowflake:snowflake-jdbc:$snowflakeJdbcVersion")
  
 	def jacksonVersion = "2.18.2"
 	// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core
