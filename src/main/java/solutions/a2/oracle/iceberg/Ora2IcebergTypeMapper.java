@@ -59,15 +59,15 @@ public class Ora2IcebergTypeMapper {
 		if (StringUtils.isNotBlank(dataTypeMap)) {
 			final String[] overrideArray = StringUtils.split(dataTypeMap, ';');
 			for (final String overrideSpec : overrideArray) {
-				if (StringUtils.isNotBlank(overrideSpec) && StringUtils.contains(overrideSpec, ':')) {
-					final String columnOrPattern = StringUtils.trim(StringUtils.substringBefore(overrideSpec, ':'));
-					final String overrideData = StringUtils.substringAfter(overrideSpec, ':');
+				if (StringUtils.isNotBlank(StringUtils.trim(overrideSpec)) && StringUtils.contains(overrideSpec, ':')) {
+					final String columnOrPattern = StringUtils.trim(StringUtils.substringBefore(StringUtils.trim(overrideSpec), ':'));
+					final String overrideData = StringUtils.substringAfter(StringUtils.trim(overrideSpec), ':');
 					if (StringUtils.isNotBlank(columnOrPattern) &&
 						StringUtils.isNotBlank(overrideData)) {
 						if (columnOrPattern.contains("%")) {
-							patternOverrides.put(columnOrPattern, override(StringUtils.substringAfter(overrideSpec, ':')));
+							patternOverrides.put(columnOrPattern, override(StringUtils.substringAfter(StringUtils.trim(overrideSpec), ':')));
 						} else {
-							exactOverrides.put(columnOrPattern, override(StringUtils.substringAfter(overrideSpec, ':')));
+							exactOverrides.put(columnOrPattern, override(StringUtils.substringAfter(StringUtils.trim(overrideSpec), ':')));
 						}
 					} else {
 						//TODO - message

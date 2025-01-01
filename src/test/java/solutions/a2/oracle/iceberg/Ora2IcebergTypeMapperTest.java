@@ -31,6 +31,32 @@ import java.sql.Types;
  * 
  */
 public class Ora2IcebergTypeMapperTest {
+
+
+	@Test
+	public void testSpacesInSpec() {
+
+		Ora2IcebergTypeMapper mapper = new Ora2IcebergTypeMapper(
+				null, "%_ID:NUMBER=LONG ;  %ATED_BY:NUMBER=INTEGER ; ");
+
+		Pair<Integer, Type> invoiceId = mapper.icebergType("REASON_ID", java.sql.Types.NUMERIC, 0, 0);
+		Type invoiceIdType = invoiceId.getRight();
+		System.out.println(invoiceIdType.toString());
+		assertTrue(invoiceIdType instanceof LongType);
+		assertEquals(invoiceId.getLeft(), java.sql.Types.BIGINT);
+
+
+
+		Pair<Integer, Type> createdBy = mapper.icebergType("CREATED_BY", java.sql.Types.NUMERIC, 0, 0);
+		Type createdByType = createdBy.getRight();
+		System.out.println(createdByType.toString());
+		assertTrue(createdByType instanceof IntegerType);
+		assertEquals(createdBy.getLeft(), Types.INTEGER);
+
+
+
+	}
+
 	@Test
 	public void testNumber2Integer() {
 		Ora2IcebergTypeMapper mapper = new Ora2IcebergTypeMapper(
@@ -78,5 +104,6 @@ public class Ora2IcebergTypeMapperTest {
 		assertTrue(idType instanceof IntegerType);
 
 	}
+
 
 }
