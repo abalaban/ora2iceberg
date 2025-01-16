@@ -243,6 +243,89 @@ In the example above, the parameters represent the following:
 
 -R: is used to pass the additional Iceberg properties, has to be used as prefix to each additional parameter; the parameter follows it with no spaces; when used with the third-party S3-compatible storage, you have to specify the IO implementation (-Rio-impl) exactly as shown, -Rs3.endpoint in the above http format without quotes where s3host is the S3 storage hostname, 9878 is its port,  and -Rs3.path-style-access=true.
 
+=== Scenario 4: Copying the table to the AWS S3 storage with Hive as catalog
+You can use this scenario for transfering the tables to the AWS S3 storage, when already having Hadoop cluster on-prem or using AWS EMR service with activated Hive Server.  
+
+==== Prerequisites
+* Configure the S3 storage bucket (specified as bucket-test in the below example)
+* Create the Hive database if using other than ‘default’.
+* Set the following environment variables in your shell:
+** AWS_REGION to the region of your bucket;
+** AWS_ACCESS_KEY_ID to your access key ID;
+** AWS_SECRET_ACCESS_KEY to the secret access key.
+
+==== Example 
+----
+export AWS_REGION=us-east-1
+export AWS_ACCESS_KEY_ID=AccOuNtKey
+export AWS_SECRET_ACCESS_KEY=OhSecReT
+cd ~/ora2iceberg/build/libs/
+java -jar ora2iceberg-0.8.1.7-all.jar \
+--source-jdbc-url jdbc:oracle:thin:@dbhost:1521/SID \
+--source-user dbuser --source-password hispassword \
+-T hive -C default \
+-U "thrift://hiveserver:9083" \
+-H "s3://bucket-test" \
+-Rio-impl=org.apache.iceberg.aws.s3.S3FileIO \
+--source-object mtl_item_attributes \
+--source-schema inv -N dest-warehose 
+----
+
+In the example above, the parameters represent the following:
+
+–source-jdbc-url: Specifies the source database URL, where dbhost is the hostname, 1521 is the listener port and SID is the database’s service name;
+
+–source-user and –source-password: source database username and password without any quotes, as is;
+
+–source-object: name of the table in the source database;
+
+–source-schema: name of the schema containing the table;
+
+-T: catalog type, could be glue, hive, nessie, jdbc;
+
+-C: Catalog database name in Hive;
+
+-U: catalog endpoint URI in double quotes, mandatory parameter, in this case in thrift format where hiveserver is Hive server host, 9083 is Hive port;  
+
+-N: Iceberg namespace, no quotes;
+
+-H: destination path for the iceberg table in quotes, in this example the path to the S3 bucket named bucket-test;
+
+-R: is used to pass the additional Iceberg properties, has to be used as prefix to each additional parameter; the parameter follows it with no spaces; when used with the AWS S3 storage, you have to specify the IO implementation (-Rio-impl) exactly as shown.
+
+== 3. Data Type Mapping
+=== Default Mappings
+Ora2Iceberg maps Oracle types to Iceberg types as follows:
+
+[cols="1,2", options="header"]
+|===
+| Oracle Type | Iceberg Type
+
+| NUMBER | decimal(38,10) |
+| NUMBER(p,s)   | decimal(p,s)    |
+| NUMBER(p,0), s=0, p<10   | integer, int         |
+| NUMBER(p,0), s=0, p<19 | long, BigInt |
+| VARCHAR2, CHAR | string |
+| TIMESTAMP | timestamp |
+| DATE | timestamp |
+|===
+
+=== Custom Overrides
+Customize mappings using the -m option:
+
+-m "COLUMN_NAME:NUMBER=long; %_ID:NUMBER=integer"
+
+=== Syntax:
+COLUMN_OR_PATTERN:ORACLE_TYPE=ICEBERG_TYPE
+
+=== Examples:
+Map a specific column:
+-m "EMP_ID:NUMBER=long"
+
+Use patterns:
+-m "%_ID:NUMBER=integer"
+
+Supports % for partial matches (at the beginning or end only). (Seriously, no middle matches—don’t even try!)
 
 
 
