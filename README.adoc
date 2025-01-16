@@ -3,10 +3,91 @@ image:https://img.shields.io/maven-central/v/solutions.a2.oracle.iceberg/ora2ice
 
 = ora2iceberg Data Pipe
 
-== Introduction
+== 1. What is Ora2Iceberg?
+Ora2Iceberg is your go-to tool for simplifying data migration! It seamlessly transfers Oracle tables and views into Iceberg structures across various data lakes and warehouses—whether cloud-based or on-premises. Supporting a wide range of storage systems, including S3-compatible, HDFS, and local files, it integrates effortlessly with all Iceberg-compatible catalogs. This includes JDBC connections to popular free databases like PostgreSQL and MySQL, making complex Hadoop setups or Spark/Hive unnecessary. Seriously, who wants more Hadoop headaches?
 
-== Building from source
-After you've downloaded the code from GitHub, you can build it using Gradle. Use this command:
+=== Who Benefits from Ora2Iceberg?
+* Data Engineers: Effortlessly migrate from legacy Oracle databases to modern systems (finally, something less painful than Mondays!).
+* Cloud Architects: Enable cost-effective and scalable data lakes like AWS Glue and S3Tables.
+* Database Administrators: Simplify schema conversions and data type mappings without breaking a sweat.
+* Analytics Teams: Unlock high-performance querying with Iceberg’s partitioning and indexing. It’s like upgrading from a bicycle to a sports car.
+
+=== Key Features
+* Multi-Catalog Support: Compatible with Glue, Hive, S3Tables, and more.
+* Customizable Data Mappings: Override Oracle-to-Iceberg type mappings with ease.
+* Partitioning Options: Optimize table performance with advanced partitioning strategies.
+* Flexible Upload Modes: Full, incremental, and future merge upload modes.
+* Security Compliance: Validate dependencies for secure builds—because nobody likes surprises in production.
+
+== 2. Getting Started
+=== Prerequisites
+==== Environment Setup:
+* Install Java (JDK 11 or later).
+==== Supported Iceberg Catalogs:
+* REST, JDBC, Hadoop, Hive, Nessie, Glue, S3Tables, DynamoDB.
+
+=== Installation
+==== 1. Clone the repository
+----
+git clone https://github.com/a2solutions/ora2iceberg.git
+----
+
+==== 2. Navigate to the project directory:
+----
+cd ora2iceberg
+----
+
+==== 3. Build the project:
+** On Linux/Unix:
+----
+gradle clean build
+----
+** On Windows:
+----
+./gradlew clean build
+----
+==== 4. Run the tool:
+----
+java -jar build/libs/ora2iceberg.jar
+----
+=== Optional: Validating Secure Dependencies
+Run the following to ensure all dependency libraries are secure:
+----
+gradle dependencyCheckAnalyze
+----
+
+== 3. Basic Usage
+=== Common assumptions:
+The machine on which you run ora2Iceberg can be: 
+
+* Remote or local to the source Oracle database;
+* Remote or local to the destination catalogs;
+* Remote to the destination storage if it supports the network access (S3-compatible, Hadoop, SnowFlake);
+* Local to the destination storage if copying to the plain local file system.
+
+The tool can be run on Linux or Windows in any shell of your choice capable of running Java 11 and later (the popular free JREs like Corretto and Temurin are fully supported).
+
+=== Scenario 1: Copying the table to AWS S3 Storage and using AWS Glue as catalog.
+This scenario implies copying the Oracle tables to the general AWS S3 storage, that can be further accessed by AWS analytical tools.
+
+==== Prerequisites
+* Configure the S3 storage bucket (specified as iceberg-warehouse in the below example)
+* Configure and save the AWS access key pair according to https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds-programmatic-access.html 
+* Set the following environment variables in your shell:
+** AWS_REGION to the region of your bucket;
+** AWS_ACCESS_KEY_ID to your access key ID;
+** AWS_SECRET_ACCESS_KEY to the secret access key.
+
+
+
+
+
+
+
+
+
+
+
 ---- 
 gradle clean build
 ----
