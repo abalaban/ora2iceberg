@@ -301,13 +301,13 @@ Ora2Iceberg maps Oracle types to Iceberg types as follows:
 |===
 | Oracle Type | Iceberg Type
 
-| NUMBER | decimal(38,10) |
-| NUMBER(p,s)   | decimal(p,s)    |
-| NUMBER(p,0), s=0, p<10   | integer, int         |
-| NUMBER(p,0), s=0, p<19 | long, BigInt |
-| VARCHAR2, CHAR | string |
-| TIMESTAMP | timestamp |
-| DATE | timestamp |
+| NUMBER | decimal(38,10) 
+| NUMBER(p,s)   | decimal(p,s)    
+| NUMBER(p,0), s=0, p<10   | integer, int         
+| NUMBER(p,0), s=0, p<19 | long, BigInt 
+| VARCHAR2, CHAR | string 
+| TIMESTAMP | timestamp 
+| DATE | timestamp 
 |===
 
 === Custom Overrides
@@ -344,13 +344,13 @@ java -jar build/libs/ora2iceberg.jar \
 [cols="1,2", options="header"]
 |===
 | Type | Description
-| IDENTITY | Direct column mapping |
-| YEAR | Partition by year |
-| MONTH | Partition by month |
-| DAY | Partition by day |
-| HOUR | Partition by hour |
-| BUCKET | Hash-based bucketing (requires bucket count) |
-| TRUNCATE | Truncate strings to a fixed length |
+| IDENTITY | Direct column mapping 
+| YEAR | Partition by year 
+| MONTH | Partition by month 
+| DAY | Partition by day 
+| HOUR | Partition by hour 
+| BUCKET | Hash-based bucketing (requires bucket count) 
+| TRUNCATE | Truncate strings to a fixed length 
 |===
 === Syntax
 Define partitions using the -P option:
@@ -418,9 +418,6 @@ java -jar build/libs/ora2iceberg.jar \
 For more details, documentation, and updates, visit the official website:
 
 https://ora2iceberg.app/
-
-== Authors
-**Aleksej Veremeev** - *Initial work* - http://a2-solutions.eu/[A2 Rešitve d.o.o.]
 
 == License
 
