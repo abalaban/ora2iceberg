@@ -327,31 +327,48 @@ Use patterns:
 
 Supports % for partial matches (at the beginning or end only). (Seriously, no middle matches—don’t even try!)
 
+== 4. Default Number Format
+The default fallback for ambiguous Oracle NUMBER columns is decimal(38,10).
 
+=== Configuration
+Override using the -d parameter:
 
+-d "decimal(20,5)"
 
+=== Example:
+java -jar build/libs/ora2iceberg.jar \
+    -d "decimal(20,5)"
 
+== 5. Partitioning
+=== Supported Partition Types
+[cols="1,2", options="header"]
+|===
+| Type | Description
+| IDENTITY | Direct column mapping |
+| YEAR | Partition by year |
+| MONTH | Partition by month |
+| DAY | Partition by day |
+| HOUR | Partition by hour |
+| BUCKET | Hash-based bucketing (requires bucket count) |
+| TRUNCATE | Truncate strings to a fixed length |
+|===
+=== Syntax
+Define partitions using the -P option:
 
+-P column_name=IDENTITY
 
+-P column_name=BUCKET,10
 
----- 
-gradle clean build
-----
- 
-The generated jar files can be found at: `build/libs/`.
+=== Example:
+java -jar build/libs/ora2iceberg.jar \
 
-An uber jar containing the library and all its relocated dependencies can also be built. Use this command: 
-----
-gradle clean shadowJar
-----
+    -P dept=IDENTITY \
 
-The generated uber jar file can also be found at: `build/libs/`.
- 
-=== Validating secure dependencies
-To ensure no security vulnerabilities in the dependency libraries, run the following.
-----
-gradle dependencyCheckAnalyze
-----
+    -P emp_id=BUCKET,10
+
+(If you don’t love partitions yet, you will soon!)
+
+== 6. Understanding Parameters
 
 === Source Connection Parameters
 
