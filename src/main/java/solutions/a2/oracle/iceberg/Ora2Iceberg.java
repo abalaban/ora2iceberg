@@ -139,6 +139,8 @@ public class Ora2Iceberg {
 	private static final String OPT_DATA_TYPE_MAP_SHORT = "m";
 	private static final String OPT_ICEBERG_ID_COLS = "iceberg-id-columns";
 	private static final String OPT_ICEBERG_ID_COLS_SHORT = "I";
+	private static final String OPT_ICEBERG_MAX_SIZE = "iceberg-max-file-size";
+	private static final String OPT_ICEBERG_MAX_SIZE_SHORT = "Z";
 
 	@SuppressWarnings("unchecked")
 	public static void main(String[] argv) {
@@ -524,14 +526,16 @@ public class Ora2Iceberg {
 						.collect(Collectors.toCollection(HashSet::new));
 			}
 			long maxFileSize;
-			if (cmd.hasOption("iceberg-max-file-size")) {
+			if (cmd.hasOption(OPT_ICEBERG_MAX_SIZE_SHORT)) {
 				try {
-					maxFileSize = ((Number) cmd.getParsedOptionValue("iceberg-max-file-size")).longValue();
+					maxFileSize = ((Number) cmd.getParsedOptionValue(OPT_ICEBERG_MAX_SIZE_SHORT)).longValue();
 				} catch (ParseException pe) {
 					maxFileSize = MAX_FILE_SIZE;
 					LOGGER.error(
-							"Unable to parse value '{}' of option '{}'! Default {} will be used.",
-							cmd.getOptionValue("iceberg-max-file-size"), "iceberg-max-file-size", MAX_FILE_SIZE);
+							"\n=====================\n" +
+							"Unable to parse value '{}' of option '{}'! Default {} will be used." +
+							"\n=====================\n",
+							cmd.getOptionValue(OPT_ICEBERG_MAX_SIZE_SHORT), OPT_ICEBERG_MAX_SIZE, MAX_FILE_SIZE);
 				}
 			} else {
 				maxFileSize = MAX_FILE_SIZE;
@@ -749,8 +753,8 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(partitionBy);
 
-		final Option maxFileSize = Option.builder("Z")
-				.longOpt("iceberg-max-file-size")
+		final Option maxFileSize = Option.builder(OPT_ICEBERG_MAX_SIZE_SHORT)
+				.longOpt(OPT_ICEBERG_MAX_SIZE)
 				.type(Number.class)
 				.hasArg()
 				.desc("Max file size. Default - " + MAX_FILE_SIZE)
