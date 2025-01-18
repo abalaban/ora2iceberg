@@ -137,6 +137,8 @@ public class Ora2Iceberg {
 	private static final String OPT_WHERE_CLAUSE_SHORT = "w";
 	private static final String OPT_DATA_TYPE_MAP = "data-type-map";
 	private static final String OPT_DATA_TYPE_MAP_SHORT = "m";
+	private static final String OPT_ICEBERG_ID_COLS = "iceberg-id-columns";
+	private static final String OPT_ICEBERG_ID_COLS_SHORT = "I";
 
 	@SuppressWarnings("unchecked")
 	public static void main(String[] argv) {
@@ -513,11 +515,12 @@ public class Ora2Iceberg {
 			}
 
 			final Set<String> idColumnNames;
-			if (cmd.getOptionValues("I") == null || cmd.getOptionValues("I").length == 0) {
+			if (cmd.getOptionValues(OPT_ICEBERG_ID_COLS_SHORT) == null ||
+					cmd.getOptionValues(OPT_ICEBERG_ID_COLS_SHORT).length == 0) {
 				idColumnNames = null;
 			} else {
 				idColumnNames = Arrays
-						.stream(cmd.getOptionValues("I"))
+						.stream(cmd.getOptionValues(OPT_ICEBERG_ID_COLS_SHORT))
 						.collect(Collectors.toCollection(HashSet::new));
 			}
 			long maxFileSize;
@@ -731,8 +734,8 @@ public class Ora2Iceberg {
 				.build();
 		options.addOption(icebergTable);
 
-		final Option idColumns = Option.builder("I")
-				.longOpt("iceberg-id-columns")
+		final Option idColumns = Option.builder(OPT_ICEBERG_ID_COLS_SHORT)
+				.longOpt(OPT_ICEBERG_ID_COLS)
 				.hasArgs()
 				.desc("Apache Iceberg table identifier column names")
 				.build();
