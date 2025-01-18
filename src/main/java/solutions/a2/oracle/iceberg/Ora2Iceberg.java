@@ -63,7 +63,6 @@ import org.slf4j.LoggerFactory;
 public class Ora2Iceberg {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(Ora2Iceberg.class);
-	private static final String ROWID_KEY = "ORA_ROW_ID";
 	private static final Pattern SQL_EXPRESSION = Pattern.compile(
 			"(.*?)SELECT(.*?)FROM(.*?)",
 			Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
@@ -77,6 +76,9 @@ public class Ora2Iceberg {
 	static final String PARTITION_TYPE_MONTH = "MONTH";
 	static final String PARTITION_TYPE_DAY = "DAY";
 	static final String PARTITION_TYPE_HOUR = "HOUR";
+
+	static final String ROWID_KEY = "ORA_ROW_ID";
+	static final String ROWID_ORA = "ROWID";
 
 	static final String UPLOAD_DEFAULT_MODE = "full";
 

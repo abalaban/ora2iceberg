@@ -155,7 +155,7 @@ public class Ora2IcebergTypeMapper {
 		case BINARY:
 			return new ImmutablePair<Integer, Type>(BINARY, Types.BinaryType.get());
 		default:
-			return new ImmutablePair<Integer, Type>(VARCHAR, Types.StringType.get()); // fallback
+			return new ImmutablePair<Integer, Type>(VARCHAR, Types.StringType.get());
 		}
 	}
 

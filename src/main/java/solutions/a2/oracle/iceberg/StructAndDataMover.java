@@ -61,6 +61,20 @@ import net.snowflake.client.jdbc.SnowflakeSQLException;
 import oracle.jdbc.OracleResultSet;
 import oracle.sql.NUMBER;
 
+import static java.sql.Types.FLOAT;
+import static java.sql.Types.DOUBLE;
+import static java.sql.Types.BOOLEAN;
+import static java.sql.Types.INTEGER;
+import static java.sql.Types.BIGINT;
+import static java.sql.Types.NUMERIC;
+import static java.sql.Types.VARCHAR;
+import static java.sql.Types.NVARCHAR;
+import static java.sql.Types.TIMESTAMP;
+import static java.sql.Types.TIMESTAMP_WITH_TIMEZONE;
+import static java.sql.Types.ROWID;
+
+import static solutions.a2.oracle.iceberg.Ora2Iceberg.ROWID_ORA;
+import static solutions.a2.oracle.iceberg.Ora2Iceberg.ROWID_KEY;
 import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_IDENTITY;
 import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_BUCKET;
 import static solutions.a2.oracle.iceberg.Ora2Iceberg.PARTITION_TYPE_TRUNCATE;
@@ -92,7 +106,7 @@ public class StructAndDataMover {
 	private final String whereClause;
 	private final Map<String, int[]> columnsMap;
 	private final long targetFileSize;
-	private final boolean icebergTableExists;
+	private final boolean rowidPseudoKey;
 	private Table table;
 
 	StructAndDataMover(
@@ -105,15 +119,12 @@ public class StructAndDataMover {
 			final BaseMetastoreCatalog catalog,
 			final TableIdentifier icebergTable,
 			final Set<String> idColumnNames,
-			//TODO
-			//final Set<String> partitionDefs,
 			final List<Triple<String, String, Integer>>  partitionDefs,
 			final long targetFileSize,
 			final Ora2IcebergTypeMapper mapper) throws SQLException {
 		connection = dbMetaData.getConnection();
         columnsMap = new HashMap<>();
 		this.isTableOrView = isTableOrView;
-		this.icebergTableExists = icebergTableExists;
 		this.sourceSchema = sourceSchema;
 		this.sourceObject = sourceObject;
 		this.targetFileSize = targetFileSize;
@@ -138,9 +149,29 @@ public class StructAndDataMover {
 
 			final List<Types.NestedField> allColumns = new ArrayList<>();
 			final Set<Integer> pkIds = new HashSet<>();
-			int columnId = 0;
+			int columnId;
 
 			final boolean idColumnsPresent = idColumnNames != null && !idColumnNames.isEmpty();
+			if (isTableOrView &&
+					idColumnsPresent &&
+					idColumnNames.size() == 1 &&
+					StringUtils.equalsIgnoreCase(idColumnNames.iterator().next(), ROWID_ORA)) {
+				rowidPseudoKey = true;
+				columnId = 1;
+				allColumns.add(
+						Types.NestedField.required(columnId, ROWID_KEY, Types.StringType.get()));
+				pkIds.add(columnId);
+				final int[] typeAndScale = new int[INFO_SIZE];
+				typeAndScale[TYPE_POS] = ROWID;
+				typeAndScale[PRECISION_POS] = 0;
+				typeAndScale[SCALE_POS] = 0;
+				typeAndScale[NULL_POS] = 0;
+				columnsMap.put(ROWID_KEY, typeAndScale);
+			} else {
+				rowidPseudoKey = false;
+				columnId = 0;
+			}
+
 			final ResultSet columns = dbMetaData.getColumns(sourceCatalog, sourceSchema, sourceObject, "%");
 			while (columns.next()) {
 				final String columnName = columns.getString("COLUMN_NAME");
@@ -159,8 +190,6 @@ public class StructAndDataMover {
 
 				final int finalPrecision;
 				final int finalScale;
-
-
 				if (type instanceof DecimalType) {
 					final DecimalType decimalType = (DecimalType) type;
 					finalPrecision = decimalType.precision();
@@ -201,7 +230,6 @@ public class StructAndDataMover {
 					}
 				}
 			}
-
 
 			final Schema schema = pkIds.isEmpty() ? new Schema(allColumns) : new Schema(allColumns, pkIds);
 			final PartitionSpec spec;
@@ -339,21 +367,28 @@ public class StructAndDataMover {
 				}
 			};
 
-			//TODO - where clause!!!
-			final PreparedStatement ps = connection.prepareStatement(
-							"select * from \"" + sourceSchema + "\".\"" + sourceObject + "\"" +
-							(StringUtils.isBlank(whereClause) ? "" : "\n" + whereClause));
+			final PreparedStatement ps;
+			if (rowidPseudoKey) {
+				ps = connection.prepareStatement(
+						"select ROWIDTOCHAR(ROWID) " + ROWID_KEY + ", T.* from \"" + sourceSchema + "\".\"" + sourceObject + "\" T" +
+						(StringUtils.isBlank(whereClause) ? "" : "\n" + whereClause));
+			} else {
+				ps = connection.prepareStatement(
+						"select * from \"" + sourceSchema + "\".\"" + sourceObject + "\"" +
+						(StringUtils.isBlank(whereClause) ? "" : "\n" + whereClause));
+			}
             final OracleResultSet rs = (OracleResultSet) ps.executeQuery();
-			//TODO - run statistic!
-			//TODO - progress on screen!!!
 			while (rs.next()) {
 				final GenericRecord record = GenericRecord.create(table.schema());
 				for (final Map.Entry<String, int[]> entry : columnsMap.entrySet()) {
 					switch (entry.getValue()[TYPE_POS]) {
-						case java.sql.Types.BOOLEAN:
+						case ROWID:
+							record.setField(entry.getKey(), rs.getString(entry.getKey()));
+							break;
+						case BOOLEAN:
 							record.setField(entry.getKey(), rs.getBoolean(entry.getKey()));
 							break;
-						case java.sql.Types.INTEGER:
+						case INTEGER:
 							final NUMBER oraInt = rs.getNUMBER(entry.getKey());
 							if (rs.wasNull()) {
 								record.setField(entry.getKey(), null);
@@ -396,7 +431,7 @@ public class StructAndDataMover {
 								}
 							}
 							break;
-						case java.sql.Types.BIGINT:
+						case BIGINT:
 							final NUMBER oraLong = rs.getNUMBER(entry.getKey());
 							if (rs.wasNull()) {
 								record.setField(entry.getKey(), null);
@@ -439,7 +474,7 @@ public class StructAndDataMover {
 								}
 							}
 							break;
-						case java.sql.Types.NUMERIC:
+						case NUMERIC:
 							final NUMBER oraNum = rs.getNUMBER(entry.getKey());
 							if (rs.wasNull()) {
 								record.setField(entry.getKey(), null);
@@ -497,14 +532,14 @@ public class StructAndDataMover {
 								}
 							}
 							break;
-						case java.sql.Types.FLOAT:
+						case FLOAT:
 							record.setField(entry.getKey(), rs.getFloat(entry.getKey()));
 							break;
-						case java.sql.Types.DOUBLE:
+						case DOUBLE:
 							record.setField(entry.getKey(), rs.getDouble(entry.getKey()));
 							break;
-						case java.sql.Types.TIMESTAMP:
-						case java.sql.Types.TIME_WITH_TIMEZONE:
+						case TIMESTAMP:
+						case TIMESTAMP_WITH_TIMEZONE:
 							final Timestamp ts =  rs.getTimestamp(entry.getKey());
 							if (ts != null) {
 								record.setField(entry.getKey(), ts.toLocalDateTime());
@@ -512,10 +547,10 @@ public class StructAndDataMover {
 								record.setField(entry.getKey(), null);
 							}
 							break;
-						case java.sql.Types.VARCHAR:
+						case VARCHAR:
 							record.setField(entry.getKey(), rs.getString(entry.getKey()));
 							break;
-						case java.sql.Types.NVARCHAR:
+						case NVARCHAR:
 							record.setField(entry.getKey(), rs.getNString(entry.getKey()));
 							break;
 					}
