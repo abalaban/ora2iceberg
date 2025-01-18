@@ -755,7 +755,7 @@ public class Ora2Iceberg {
 
 		final Option maxFileSize = Option.builder(OPT_ICEBERG_MAX_SIZE_SHORT)
 				.longOpt(OPT_ICEBERG_MAX_SIZE)
-				.type(Number.class)
+				.type(Long.class)
 				.hasArg()
 				.desc("Max file size. Default - " + MAX_FILE_SIZE)
 				.build();
