@@ -50,7 +50,7 @@ version = readVersion()
 group "solutions.a2.oracle.iceberg"
 
 dependencies {
-	def oracleJdbcVersion = "23.6.0.24.10"
+	def oracleJdbcVersion = "23.7.0.25.01"
 	// https://mvnrepository.com/artifact/com.oracle.database.jdbc/ojdbc11
 	implementation("com.oracle.database.jdbc:ojdbc11:$oracleJdbcVersion")
 	// https://mvnrepository.com/artifact/com.oracle.database.jdbc/ucp11
