@@ -250,7 +250,7 @@ dependencies {
 	// https://mvnrepository.com/artifact/software.amazon.s3tables/s3-tables-catalog-for-iceberg
 	implementation("software.amazon.s3tables:s3-tables-catalog-for-iceberg:$s3TablesCatalog")
 
-	def jUnitVersion = "5.11.3"
+	def jUnitVersion = "5.11.4"
 	// https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api
 	testImplementation("org.junit.jupiter:junit-jupiter-api:$jUnitVersion")
 	// https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-engine
