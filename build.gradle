@@ -64,7 +64,7 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.xerial/sqlite-jdbc
 	implementation("org.xerial:sqlite-jdbc:$sqLiteJdbcVersion")
 
-	def mariaDbJdbcVersion = "3.5.1"
+	def mariaDbJdbcVersion = "3.5.2"
 	// https://mvnrepository.com/artifact/org.mariadb.jdbc/mariadb-java-client
 	implementation("org.mariadb.jdbc:mariadb-java-client:$mariaDbJdbcVersion")
 
