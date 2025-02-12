@@ -194,7 +194,7 @@ dependencies {
 		exclude group: 'net.snowflake', module: 'snowflake-jdbc'
 	}
 
-	def snowflakeJdbcVersion = "3.21.0"
+	def snowflakeJdbcVersion = "3.22.0"
 	// https://mvnrepository.com/artifact/net.snowflake/snowflake-jdbc
 	implementation("net.snowflake:snowflake-jdbc:$snowflakeJdbcVersion")
  
