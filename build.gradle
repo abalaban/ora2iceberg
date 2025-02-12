@@ -246,7 +246,7 @@ dependencies {
 	// https://mvnrepository.com/artifact/software.amazon.awssdk/glue
 	implementation("software.amazon.awssdk:glue:$awsVersion")
 
-	def s3TablesCatalog = "0.1.3"
+	def s3TablesCatalog = "0.1.5"
 	// https://mvnrepository.com/artifact/software.amazon.s3tables/s3-tables-catalog-for-iceberg
 	implementation("software.amazon.s3tables:s3-tables-catalog-for-iceberg:$s3TablesCatalog")
 
