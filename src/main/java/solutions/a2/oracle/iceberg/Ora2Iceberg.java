@@ -23,15 +23,13 @@ import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -523,9 +521,9 @@ public class Ora2Iceberg {
 					cmd.getOptionValues(OPT_ICEBERG_ID_COLS_SHORT).length == 0) {
 				idColumnNames = null;
 			} else {
-				idColumnNames = Arrays
-						.stream(cmd.getOptionValues(OPT_ICEBERG_ID_COLS_SHORT))
-						.collect(Collectors.toCollection(HashSet::new));
+				idColumnNames = new LinkedHashSet<>();
+				for (final String idCol : cmd.getOptionValues(OPT_ICEBERG_ID_COLS_SHORT))
+					idColumnNames.add(idCol);
 			}
 			long maxFileSize;
 			if (cmd.hasOption(OPT_ICEBERG_MAX_SIZE_SHORT)) {
