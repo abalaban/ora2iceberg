@@ -25,7 +25,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -148,7 +148,7 @@ public class StructAndDataMover {
 			tables.close();
 
 			final List<Types.NestedField> allColumns = new ArrayList<>();
-			final Set<Integer> pkIds = new HashSet<>();
+			final Set<Integer> pkIds = new LinkedHashSet<>();
 			int columnId;
 
 			final boolean idColumnsPresent = idColumnNames != null && !idColumnNames.isEmpty();
