@@ -451,7 +451,8 @@ public class Ora2Iceberg {
 						icebergTable = TableIdentifier.of(icebergTableName);
 					else
 						icebergTable = TableIdentifier.of(
-								Namespace.of(StringUtils.split(nessieNamespace, '.')), icebergTableName);						
+								Namespace.of(StringUtils.split(nessieNamespace, '.')),
+								StringUtils.lowerCase(icebergTableName));						
 					break;
 				case CATALOG_IMPL_SNOWFLAKE:
 					final String snowNamespace = cmd.getOptionValue(OPT_ICEBERG_NAMESPACE_SHORT);
