@@ -444,9 +444,14 @@ public class Ora2Iceberg {
 					}
 					break;
 				case CATALOG_IMPL_NESSIE:
-					// Nessie namespaces are implicit and do not need to be explicitly created or deleted.
-					// The create and delete namespace methods are no-ops for the NessieCatalog.
-					icebergTable = TableIdentifier.of(icebergTableName);
+					final String nessieNamespace = cmd.getOptionValue(OPT_ICEBERG_NAMESPACE_SHORT);
+					if (StringUtils.isBlank(nessieNamespace))
+						// Nessie namespaces are implicit and do not need to be explicitly created or deleted.
+						// The create and delete namespace methods are no-ops for the NessieCatalog.
+						icebergTable = TableIdentifier.of(icebergTableName);
+					else
+						icebergTable = TableIdentifier.of(
+								Namespace.of(StringUtils.split(nessieNamespace, '.')), icebergTableName);						
 					break;
 				case CATALOG_IMPL_SNOWFLAKE:
 					final String snowNamespace = cmd.getOptionValue(OPT_ICEBERG_NAMESPACE_SHORT);
