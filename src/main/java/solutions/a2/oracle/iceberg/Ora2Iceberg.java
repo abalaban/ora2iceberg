@@ -445,6 +445,7 @@ public class Ora2Iceberg {
 					}
 					break;
 				case CATALOG_IMPL_NESSIE:
+				case CATALOG_IMPL_REST:
 					final String nessieNamespace = cmd.getOptionValue(OPT_ICEBERG_NAMESPACE_SHORT);
 					if (StringUtils.isBlank(nessieNamespace))
 						// Nessie namespaces are implicit and do not need to be explicitly created or deleted.
