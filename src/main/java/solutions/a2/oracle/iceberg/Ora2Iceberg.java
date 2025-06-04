@@ -45,6 +45,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.aws.AwsProperties;
+import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.hadoop.Configurable;
@@ -245,11 +246,11 @@ public class Ora2Iceberg {
 					!isDriverLoaded(DRIVER_MARIADB))
 				try {Class.forName(DRIVER_MARIADB);} catch (ClassNotFoundException cnf) {}				
 		}
-		BaseMetastoreCatalog catalog = null;
+		Catalog catalog = null;
 		try {
 			final Class<?> clazz = Class.forName(catalogProps.get(CatalogProperties.CATALOG_IMPL));
 			final Constructor<?> constructor = clazz.getConstructor();
-			catalog = (BaseMetastoreCatalog) constructor.newInstance();
+			catalog = (Catalog) constructor.newInstance();
 			if (catalog instanceof Configurable) {
 				//EcsCatalog, GlueCatalog, JdbcCatalog, NessieCatalog, RESTCatalog, RESTSessionCatalog, SnowflakeCatalog
 				((Configurable<Object>) catalog).setConf(new Configuration());

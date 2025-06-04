@@ -38,6 +38,7 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.data.GenericAppenderFactory;
 import org.apache.iceberg.data.GenericRecord;
@@ -51,7 +52,6 @@ import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.types.Types.DecimalType;
 import org.apache.iceberg.AppendFiles;
-import org.apache.iceberg.BaseMetastoreCatalog;
 import org.apache.iceberg.FileFormat;
 import org.apache.iceberg.PartitionKey;
 import org.slf4j.Logger;
@@ -116,7 +116,7 @@ public class StructAndDataMover {
 			final String whereClause,
 			final boolean isTableOrView,
 			final boolean icebergTableExists,
-			final BaseMetastoreCatalog catalog,
+			final Catalog catalog,
 			final TableIdentifier icebergTable,
 			final Set<String> idColumnNames,
 			final List<Triple<String, String, Integer>>  partitionDefs,
