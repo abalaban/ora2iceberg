@@ -217,11 +217,11 @@ public class StructAndDataMover {
 							System.exit(1);
 						} else {
 							allColumns.add(
-								Types.NestedField.required(columnId, columnName, type));
+								Types.NestedField.required(columnId, StringUtils.lowerCase(columnName), type));
 						}
 					} else {
 						allColumns.add(
-								Types.NestedField.optional(columnId, columnName, type));
+								Types.NestedField.optional(columnId, StringUtils.lowerCase(columnName), type));
 					}
 					if (idColumnsPresent) {
 						if (idColumnNames.contains(columnName) /* && !nullable */) {
@@ -381,21 +381,22 @@ public class StructAndDataMover {
 			while (rs.next()) {
 				final GenericRecord record = GenericRecord.create(table.schema());
 				for (final Map.Entry<String, int[]> entry : columnsMap.entrySet()) {
+					final String icebergColumn = StringUtils.lowerCase(entry.getKey());
 					switch (entry.getValue()[TYPE_POS]) {
 						case ROWID:
-							record.setField(entry.getKey(), rs.getString(entry.getKey()));
+							record.setField(icebergColumn, rs.getString(entry.getKey()));
 							break;
 						case BOOLEAN:
-							record.setField(entry.getKey(), rs.getBoolean(entry.getKey()));
+							record.setField(icebergColumn, rs.getBoolean(entry.getKey()));
 							break;
 						case INTEGER:
 							final NUMBER oraInt = rs.getNUMBER(entry.getKey());
 							if (rs.wasNull()) {
-								record.setField(entry.getKey(), null);
+								record.setField(icebergColumn, null);
 							} else {
 								try {
 									final int intVal = oraInt.intValue(); 
-									record.setField(entry.getKey(), intVal);
+									record.setField(icebergColumn, intVal);
 									} catch (SQLException sqle) {
 										if (sqle.getErrorCode() == ORA_17026 ||
 												StringUtils.containsIgnoreCase(sqle.getMessage(), "Overflow Exception")) {
@@ -410,7 +411,7 @@ public class StructAndDataMover {
 												.append("\nDump value of NUMBER column =")
 												.append(rawToHex(oraInt.getBytes()));
 											if (entry.getValue()[NULL_POS] == 1) {
-												record.setField(entry.getKey(), null);
+												record.setField(icebergColumn, null);
 												sb
 													.append("\nSetting value to NULL")
 													.append("\n=====================\n");
@@ -434,11 +435,11 @@ public class StructAndDataMover {
 						case BIGINT:
 							final NUMBER oraLong = rs.getNUMBER(entry.getKey());
 							if (rs.wasNull()) {
-								record.setField(entry.getKey(), null);
+								record.setField(icebergColumn, null);
 							} else {
 								try {
 									final long longVal = oraLong.longValue(); 
-									record.setField(entry.getKey(), longVal);
+									record.setField(icebergColumn, longVal);
 									} catch (SQLException sqle) {
 										if (sqle.getErrorCode() == ORA_17026 ||
 												StringUtils.containsIgnoreCase(sqle.getMessage(), "Overflow Exception")) {
@@ -453,7 +454,7 @@ public class StructAndDataMover {
 												.append("\nDump value of NUMBER column =")
 												.append(rawToHex(oraLong.getBytes()));
 											if (entry.getValue()[NULL_POS] == 1) {
-												record.setField(entry.getKey(), null);
+												record.setField(icebergColumn, null);
 												sb
 													.append("\nSetting value to NULL")
 													.append("\n=====================\n");
@@ -477,7 +478,7 @@ public class StructAndDataMover {
 						case NUMERIC:
 							final NUMBER oraNum = rs.getNUMBER(entry.getKey());
 							if (rs.wasNull()) {
-								record.setField(entry.getKey(), null);
+								record.setField(icebergColumn, null);
 							} else {
 								if (oraNum.isInf() || oraNum.isNegInf()) {
 									//TODO
@@ -492,15 +493,15 @@ public class StructAndDataMover {
 											entry.getValue()[NULL_POS] == 1 ? "NULL" :
 													oraNum.isInf() ? "" + Float.MAX_VALUE : "" + Float.MIN_VALUE);
 									if (entry.getValue()[NULL_POS] == 1) {
-										record.setField(entry.getKey(), null);
+										record.setField(icebergColumn, null);
 									} else if (oraNum.isInf()) {
-										record.setField(entry.getKey(), BigDecimal.valueOf(Float.MAX_VALUE).setScale(entry.getValue()[SCALE_POS]));
+										record.setField(icebergColumn, BigDecimal.valueOf(Float.MAX_VALUE).setScale(entry.getValue()[SCALE_POS]));
 									} else {
-										record.setField(entry.getKey(), BigDecimal.valueOf(Float.MIN_VALUE).setScale(entry.getValue()[SCALE_POS]));
+										record.setField(icebergColumn, BigDecimal.valueOf(Float.MIN_VALUE).setScale(entry.getValue()[SCALE_POS]));
 									}
 								} else {
 									if (oraNum.isNull()) {
-										record.setField(entry.getKey(), null);
+										record.setField(icebergColumn, null);
 									} else {
 										final BigDecimal bd = oraNum
 												.bigDecimalValue()
@@ -520,43 +521,41 @@ public class StructAndDataMover {
 													rawToHex(oraNum.getBytes()),
 													entry.getValue()[NULL_POS] == 1 ? "NULL" : "" + Float.MAX_VALUE);
 											if (entry.getValue()[NULL_POS] == 1) {
-												record.setField(entry.getKey(), null);
+												record.setField(icebergColumn, null);
 											} else {
 												//TODO - approximation required, not MAX_VALUE!
-												record.setField(entry.getKey(), BigDecimal.valueOf(Float.MAX_VALUE).setScale(entry.getValue()[SCALE_POS]));
+												record.setField(icebergColumn, BigDecimal.valueOf(Float.MAX_VALUE).setScale(entry.getValue()[SCALE_POS]));
 											}
 										} else {
-											record.setField(entry.getKey(), bd);
+											record.setField(icebergColumn, bd);
 										}
 									}
 								}
 							}
 							break;
 						case FLOAT:
-							record.setField(entry.getKey(), rs.getFloat(entry.getKey()));
+							record.setField(icebergColumn, rs.getFloat(entry.getKey()));
 							break;
 						case DOUBLE:
-							record.setField(entry.getKey(), rs.getDouble(entry.getKey()));
+							record.setField(icebergColumn, rs.getDouble(entry.getKey()));
 							break;
 						case TIMESTAMP:
 						case TIMESTAMP_WITH_TIMEZONE:
 							final Timestamp ts =  rs.getTimestamp(entry.getKey());
 							if (ts != null) {
-								record.setField(entry.getKey(), ts.toLocalDateTime());
+								record.setField(icebergColumn, ts.toLocalDateTime());
 							} else {
-								record.setField(entry.getKey(), null);
+								record.setField(icebergColumn, null);
 							}
 							break;
 						case VARCHAR:
-							record.setField(entry.getKey(), rs.getString(entry.getKey()));
+							record.setField(icebergColumn, rs.getString(entry.getKey()));
 							break;
 						case NVARCHAR:
-							record.setField(entry.getKey(), rs.getNString(entry.getKey()));
+							record.setField(icebergColumn, rs.getNString(entry.getKey()));
 							break;
 					}
 				}
-				columnsMap.forEach((columnName, jdbcType) -> {
-				});
 				try {
 					partitionedFanoutWriter.write(record);
 				} catch (IOException ioe) {
