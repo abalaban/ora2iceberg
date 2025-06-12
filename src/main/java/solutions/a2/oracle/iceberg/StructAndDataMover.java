@@ -243,7 +243,7 @@ public class StructAndDataMover {
 				for (Triple<String, String, Integer> partitionDef : partitionDefs) {
 
 					partTypeTemp = partitionDef.getMiddle().toUpperCase();
-					partFieldTemp = partitionDef.getLeft();
+					partFieldTemp = StringUtils.lowerCase(partitionDef.getLeft());
 					partParamTemp = partitionDef.getRight();
 
 					LOGGER.info("Column map info {} {} {}",
