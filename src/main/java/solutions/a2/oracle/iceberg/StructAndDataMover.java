@@ -159,7 +159,7 @@ public class StructAndDataMover {
 				rowidPseudoKey = true;
 				columnId = 1;
 				allColumns.add(
-						Types.NestedField.required(columnId, ROWID_KEY, Types.StringType.get()));
+						Types.NestedField.required(columnId, StringUtils.lowerCase(ROWID_KEY), Types.StringType.get()));
 				pkIds.add(columnId);
 				final int[] typeAndScale = new int[INFO_SIZE];
 				typeAndScale[TYPE_POS] = ROWID;
