@@ -22,10 +22,18 @@ import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+// imports intentionally omitted; using FQNs in code to avoid extra deps here
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +50,8 @@ public class OracleMetadataExtractor {
     private final String sourceSchema;
     private final String sourceObject;
     private final boolean isTableOrView;
+    private Map<String, NumberColumnAnalysis> inferenceByColumn = new HashMap<>();
+    private Ora2IcebergTypeMapper typeMapper;
     
     public OracleMetadataExtractor(final Connection connection,
                                  final String sourceSchema,
@@ -295,7 +305,144 @@ public class OracleMetadataExtractor {
         writer.write(String.valueOf(scale));
         writer.write(",\n      \"nullable\": ");
         writer.write(String.valueOf(nullable));
+        // Recommended type for ALL columns
+        final NumberColumnAnalysis analysis = inferenceByColumn.get(columnName);
+        final String recommended;
+        if (analysis != null && analysis.getRecommendedIcebergType() != null) {
+            // Feed inference into mapper so that the single source (mapper) emits the final type
+            final String rec = analysis.getRecommendedIcebergType();
+            if (StringUtils.equalsIgnoreCase(rec, "integer")) {
+                if (typeMapper != null) typeMapper.addExactOverride(columnName, "INTEGER");
+            } else if (StringUtils.equalsIgnoreCase(rec, "long")) {
+                if (typeMapper != null) typeMapper.addExactOverride(columnName, "BIGINT");
+            } else if (StringUtils.startsWithIgnoreCase(rec, "decimal(")) {
+                if (typeMapper != null) typeMapper.addExactOverride(columnName, rec.toUpperCase());
+            }
+        }
+        if (typeMapper != null) {
+            final org.apache.commons.lang3.tuple.Pair<Integer, org.apache.iceberg.types.Type> mapped =
+                    typeMapper.icebergType(columnName, jdbcType, precision, scale);
+            final org.apache.iceberg.types.Type t = mapped.getRight();
+            if (t instanceof org.apache.iceberg.types.Types.IntegerType) recommended = "integer";
+            else if (t instanceof org.apache.iceberg.types.Types.LongType) recommended = "long";
+            else if (t instanceof org.apache.iceberg.types.Types.DecimalType) {
+                final org.apache.iceberg.types.Types.DecimalType dt = (org.apache.iceberg.types.Types.DecimalType) t;
+                recommended = String.format("decimal(%d,%d)", dt.precision(), dt.scale());
+            } else if (t instanceof org.apache.iceberg.types.Types.BooleanType) recommended = "boolean";
+            else if (t instanceof org.apache.iceberg.types.Types.DoubleType) recommended = "double";
+            else if (t instanceof org.apache.iceberg.types.Types.FloatType) recommended = "float";
+            else if (t instanceof org.apache.iceberg.types.Types.TimestampType) recommended = "timestamp";
+            else if (t instanceof org.apache.iceberg.types.Types.DateType) recommended = "date";
+            else if (t instanceof org.apache.iceberg.types.Types.StringType) recommended = "string";
+            else if (t instanceof org.apache.iceberg.types.Types.BinaryType) recommended = "binary";
+            else recommended = "string";
+        } else {
+            recommended = deriveRecommendedType(columnName, typeName, jdbcType, precision, scale, analysis);
+        }
+        writer.write(",\n      \"recommended_iceberg_type\": \"");
+        writeEscapedString(writer, recommended);
+        writer.write("\"");
+        // Stats only for NUMBER columns when analysis is available
+        if (analysis != null) {
+            writer.write(",\n      \"stats\": {\n");
+            writer.write("        \"total_values\": ");
+            writer.write(String.valueOf(analysis.getTotalValues()));
+            writer.write(",\n        \"null_values\": ");
+            writer.write(String.valueOf(analysis.getNullValues()));
+            writer.write(",\n        \"integer_values\": ");
+            writer.write(String.valueOf(analysis.getIntegerValues()));
+            writer.write(",\n        \"long_values\": ");
+            writer.write(String.valueOf(analysis.getLongValues()));
+            writer.write(",\n        \"decimal_values\": ");
+            writer.write(String.valueOf(analysis.getDecimalValues()));
+            writer.write(",\n        \"max_precision\": ");
+            writer.write(String.valueOf(analysis.getMaxPrecision()));
+            writer.write(",\n        \"max_scale\": ");
+            writer.write(String.valueOf(analysis.getMaxScale()));
+            writer.write("\n      }");
+        }
         writer.write("\n    }");
+    }
+
+    private String deriveRecommendedType(final String columnName,
+                                         final String oracleType,
+                                         final int jdbcType,
+                                         final int precision,
+                                         final int scale,
+                                         final NumberColumnAnalysis analysis) {
+        // Prefer analysis for NUMBER columns
+        if (analysis != null && analysis.getRecommendedIcebergType() != null) {
+            return analysis.getRecommendedIcebergType();
+        }
+        // Try mapper when available to align with migration mapping/overrides
+        if (typeMapper != null) {
+            final org.apache.commons.lang3.tuple.Pair<Integer, org.apache.iceberg.types.Type> mapped =
+                    typeMapper.icebergType(columnName, jdbcType, precision, scale);
+            final org.apache.iceberg.types.Type t = mapped.getRight();
+            if (t instanceof org.apache.iceberg.types.Types.IntegerType) return "integer";
+            if (t instanceof org.apache.iceberg.types.Types.LongType) return "long";
+            if (t instanceof org.apache.iceberg.types.Types.DecimalType) {
+                final org.apache.iceberg.types.Types.DecimalType dt = (org.apache.iceberg.types.Types.DecimalType) t;
+                return String.format("decimal(%d,%d)", dt.precision(), dt.scale());
+            }
+            if (t instanceof org.apache.iceberg.types.Types.BooleanType) return "boolean";
+            if (t instanceof org.apache.iceberg.types.Types.DoubleType) return "double";
+            if (t instanceof org.apache.iceberg.types.Types.FloatType) return "float";
+            if (t instanceof org.apache.iceberg.types.Types.TimestampType) return "timestamp";
+            if (t instanceof org.apache.iceberg.types.Types.DateType) return "date";
+            if (t instanceof org.apache.iceberg.types.Types.StringType) return "string";
+            if (t instanceof org.apache.iceberg.types.Types.BinaryType) return "binary";
+        }
+        switch (jdbcType) {
+            case java.sql.Types.TINYINT:
+            case java.sql.Types.SMALLINT:
+            case java.sql.Types.INTEGER:
+                return "integer";
+            case java.sql.Types.BIGINT:
+                return "long";
+            case java.sql.Types.NUMERIC:
+            case java.sql.Types.DECIMAL: {
+                int p = precision > 0 ? precision : 38;
+                int s = scale > 0 ? scale : 0;
+                if (s == 0 && p < 10) return "integer";
+                if (s == 0 && p < 19) return "long";
+                if (p > 38) p = 38;
+                if (s > p) s = p;
+                if (s < 0) s = 0;
+                return String.format("decimal(%d,%d)", p, s);
+            }
+            case java.sql.Types.FLOAT:
+                return "float";
+            case java.sql.Types.DOUBLE:
+                return "double";
+            case java.sql.Types.BOOLEAN:
+                return "boolean";
+            case java.sql.Types.TIMESTAMP:
+            case java.sql.Types.TIMESTAMP_WITH_TIMEZONE:
+                return "timestamp";
+            case java.sql.Types.DATE:
+                // Oracle DATE often mapped to TIMESTAMP in JDBC; prefer date if original type is DATE
+                if (oracleType != null && "DATE".equalsIgnoreCase(oracleType)) return "date";
+                return "timestamp";
+            case java.sql.Types.BINARY:
+            case java.sql.Types.VARBINARY:
+            case java.sql.Types.LONGVARBINARY:
+            case java.sql.Types.BLOB:
+                return "binary";
+            case java.sql.Types.CHAR:
+            case java.sql.Types.NCHAR:
+            case java.sql.Types.VARCHAR:
+            case java.sql.Types.NVARCHAR:
+            case java.sql.Types.LONGVARCHAR:
+            case java.sql.Types.CLOB:
+            case java.sql.Types.NCLOB:
+            case java.sql.Types.SQLXML:
+                return "string";
+            case java.sql.Types.ROWID:
+                return "string";
+            default:
+                return "string";
+        }
     }
     
     private int mapOracleTypeToJdbc(final String oracleType) {
@@ -325,6 +472,11 @@ public class OracleMetadataExtractor {
     
     private void writeConstraintMetadata(final BufferedWriter writer) throws SQLException, IOException {
         writer.write("  \"constraints\": {\n");
+        if (Boolean.getBoolean("ora2iceberg.skipConstraints")) {
+            writer.write("    \"skipped\": true\n");
+            writer.write("  }");
+            return;
+        }
         
         final DatabaseMetaData dbMetaData = connection.getMetaData();
         
@@ -354,133 +506,59 @@ public class OracleMetadataExtractor {
         writer.write("],\n");
         
         // Unique indexes - needed for parallel processing when no primary key
-        writer.write("    \"unique_indexes\": [\n");
-        // Temporarily skip unique index detection for Oracle EBS performance
-        LOGGER.info("Skipping unique index detection for Oracle EBS performance - use getUniqueIndexes() method for programmatic access");
-        writer.write("\n    ]");
+        writeUniqueIndexes(writer);
         
         // Validate primary key exists - critical for Iceberg
         if (primaryKeyColumns.isEmpty()) {
-            LOGGER.warn("No primary key found for {}.{}. Checking for unique indexes for parallel processing.", 
+            LOGGER.warn("No primary key found for {}.{}. Use getUniqueIndexes() method to find alternatives for parallel processing.", 
                        sourceSchema, sourceObject);
         } else {
             LOGGER.info("Primary key found: {} columns", primaryKeyColumns.size());
         }
         
-        writer.write("\n  }");
+        writer.write("  }");
     }
     
     private void writeUniqueIndexes(final BufferedWriter writer) throws SQLException, IOException {
-        final DatabaseMetaData dbMetaData = connection.getMetaData();
-        boolean firstIndex = true;
+        writer.write("    \"unique_indexes\": [");
         
-        // Try DatabaseMetaData first
-        try (final ResultSet indexInfo = dbMetaData.getIndexInfo(null, sourceSchema, sourceObject, true, false)) {
-            String currentIndexName = null;
-            final List<String> currentIndexColumns = new ArrayList<>();
+        try {
+            final List<UniqueIndex> uniqueIndexes = getUniqueIndexes();
+            boolean firstIndex = true;
             
-            while (indexInfo.next()) {
-                final String indexName = indexInfo.getString("INDEX_NAME");
-                final String columnName = indexInfo.getString("COLUMN_NAME");
+            for (final UniqueIndex index : uniqueIndexes) {
+                if (!firstIndex) {
+                    writer.write(",");
+                }
+                writer.write("\n      {");
+                writer.write("\n        \"name\": \"" + index.getName() + "\",");
+                writer.write("\n        \"columns\": [");
                 
-                // Skip if null values (can happen with some Oracle drivers)
-                if (indexName == null || columnName == null) {
-                    continue;
+                boolean firstColumn = true;
+                for (final String column : index.getColumns()) {
+                    if (!firstColumn) {
+                        writer.write(", ");
+                    }
+                    writer.write("\"" + column + "\"");
+                    firstColumn = false;
                 }
                 
-                // If we hit a new index, write the previous one
-                if (currentIndexName != null && !indexName.equals(currentIndexName)) {
-                    writeIndexInfo(writer, currentIndexName, currentIndexColumns, firstIndex);
-                    firstIndex = false;
-                    currentIndexColumns.clear();
-                }
-                
-                currentIndexName = indexName;
-                currentIndexColumns.add(columnName);
-            }
-            
-            // Write the last index
-            if (currentIndexName != null && !currentIndexColumns.isEmpty()) {
-                writeIndexInfo(writer, currentIndexName, currentIndexColumns, firstIndex);
+                writer.write("]");
+                writer.write("\n      }");
                 firstIndex = false;
             }
+            
+            if (!firstIndex) {
+                writer.write("\n    ");
+            }
+        } catch (final SQLException e) {
+            LOGGER.warn("Failed to retrieve unique indexes for JSON output: {}", e.getMessage());
+            // Continue with empty array
         }
         
-        // Fallback: Oracle data dictionary for Oracle EBS environments
-        // Use timeout to avoid hanging on slow Oracle EBS systems  
-        if (firstIndex) {
-            LOGGER.info("No unique indexes found via DatabaseMetaData, querying Oracle data dictionary for {}.{} (timeout: 30s)", 
-                       sourceSchema, sourceObject);
-            
-            final String uniqueIndexesSql = 
-                "SELECT /*+ FIRST_ROWS */ ui.index_name, uic.column_name, uic.column_position " +
-                "FROM all_indexes ui " +
-                "JOIN all_ind_columns uic ON ui.owner = uic.index_owner AND ui.index_name = uic.index_name " +
-                "WHERE ui.owner = UPPER(?) AND ui.table_name = UPPER(?) AND ui.uniqueness = 'UNIQUE' " +
-                "ORDER BY ui.index_name, uic.column_position";
-            
-            try (final PreparedStatement ps = connection.prepareStatement(uniqueIndexesSql)) {
-                ps.setString(1, sourceSchema);
-                ps.setString(2, sourceObject);
-                ps.setQueryTimeout(30); // 30 second timeout for Oracle EBS
-                
-                try (final ResultSet rs = ps.executeQuery()) {
-                    String currentIndexName = null;
-                    final List<String> currentIndexColumns = new ArrayList<>();
-                    
-                    while (rs.next()) {
-                        final String indexName = rs.getString("index_name");
-                        final String columnName = rs.getString("column_name");
-                        
-                        // If we hit a new index, write the previous one
-                        if (currentIndexName != null && !indexName.equals(currentIndexName)) {
-                            writeIndexInfo(writer, currentIndexName, currentIndexColumns, firstIndex);
-                            firstIndex = false;
-                            currentIndexColumns.clear();
-                        }
-                        
-                        currentIndexName = indexName;
-                        currentIndexColumns.add(columnName);
-                    }
-                    
-                    // Write the last index
-                    if (currentIndexName != null && !currentIndexColumns.isEmpty()) {
-                        writeIndexInfo(writer, currentIndexName, currentIndexColumns, firstIndex);
-                    }
-                } catch (SQLException e) {
-                    LOGGER.warn("Unique index query failed for {}.{}: {} (continuing without unique indexes)", 
-                               sourceSchema, sourceObject, e.getMessage());
-                }
-            } catch (SQLException e) {
-                LOGGER.warn("Failed to prepare unique index query for {}.{}: {} (continuing without unique indexes)", 
-                           sourceSchema, sourceObject, e.getMessage());
-            }
-        }
+        writer.write("]");
     }
     
-    private void writeIndexInfo(final BufferedWriter writer, final String indexName, 
-                               final List<String> columns, final boolean first) throws IOException {
-        if (!first) {
-            writer.write(",\n");
-        }
-        
-        writer.write("      {\n        \"name\": \"");
-        writeEscapedString(writer, indexName);
-        writer.write("\",\n        \"columns\": [");
-        
-        for (int i = 0; i < columns.size(); i++) {
-            if (i > 0) {
-                writer.write(", ");
-            }
-            writer.write("\"");
-            writeEscapedString(writer, columns.get(i));
-            writer.write("\"");
-        }
-        
-        writer.write("]\n      }");
-        
-        LOGGER.debug("Unique index: {} with {} columns", indexName, columns.size());
-    }
     
     /**
      * Get primary key columns for data loading order
@@ -548,7 +626,7 @@ public class OracleMetadataExtractor {
     }
     
     /**
-     * Analyze NUMBER columns to determine optimal Iceberg types
+     * Analyze NUMBER columns to determine optimal Iceberg types using parallel extraction
      */
     public List<NumberColumnAnalysis> analyzeNumberColumns() throws SQLException {
         final List<String> numberColumns = getNumberColumns();
@@ -560,59 +638,234 @@ public class OracleMetadataExtractor {
         final long rowCount = getRowCount();
         final int sampleSize = calculateSampleSize(rowCount);
         
-        LOGGER.info("Analyzing {} NUMBER columns with sample size {} from {} total rows", 
+        LOGGER.info("Analyzing {} NUMBER columns with sample size {} from {} total rows using parallel extraction", 
                    numberColumns.size(), sampleSize, rowCount);
         
         final List<NumberColumnAnalysis> results = new ArrayList<>();
         
-        // Build SQL to get sample data for all NUMBER columns
-        final StringBuilder sqlBuilder = new StringBuilder();
-        sqlBuilder.append("SELECT ");
-        for (int i = 0; i < numberColumns.size(); i++) {
-            if (i > 0) {
-                sqlBuilder.append(", ");
-            }
-            sqlBuilder.append(numberColumns.get(i));
-        }
-        sqlBuilder.append(" FROM ").append(sourceSchema).append(".").append(sourceObject);
-        
-        // Add sampling strategy
-        if (sampleSize < rowCount) {
-            sqlBuilder.append(" SAMPLE BLOCK(").append(calculateSamplePercent(sampleSize, rowCount)).append(")");
+        // Initialize analysis objects
+        for (final String columnName : numberColumns) {
+            results.add(new NumberColumnAnalysis(columnName));
         }
         
-        final String sampleSql = sqlBuilder.toString();
-        LOGGER.debug("Sample SQL: {}", sampleSql);
+        // Try parallel extraction using unique indexes first for performance
+        if (extractDataParallel(numberColumns, results, sampleSize)) {
+            LOGGER.info("Used parallel extraction with unique index ranges");
+        } else {
+            // Fallback to optimized sequential extraction if no suitable index
+            LOGGER.info("No suitable unique index found, using optimized sequential extraction");
+            extractDataSequential(numberColumns, results, sampleSize, rowCount);
+        }
         
-        try (final PreparedStatement ps = connection.prepareStatement(sampleSql);
-             final ResultSet rs = ps.executeQuery()) {
-            
-            // Initialize analysis objects
-            for (final String columnName : numberColumns) {
-                results.add(new NumberColumnAnalysis(columnName));
-            }
-            
-            int sampledRows = 0;
-            while (rs.next() && sampledRows < sampleSize) {
-                for (int i = 0; i < numberColumns.size(); i++) {
-                    final NumberColumnAnalysis analysis = results.get(i);
-                    final Object value = rs.getObject(i + 1);
-                    analysis.analyzeValue(value);
-                }
-                sampledRows++;
-            }
-            
-            // Finalize analysis and determine types
-            for (final NumberColumnAnalysis analysis : results) {
-                analysis.finalizeAnalysis();
-                LOGGER.info("Column {}: {} -> recommended Iceberg type: {}", 
-                           analysis.getColumnName(), analysis.getStatistics(), 
-                           analysis.getRecommendedIcebergType());
-            }
+        // Finalize analysis and determine types
+        for (final NumberColumnAnalysis analysis : results) {
+            analysis.finalizeAnalysis();
+            LOGGER.info("Column {}: {} -> recommended Iceberg type: {}", 
+                       analysis.getColumnName(), analysis.getStatistics(), 
+                       analysis.getRecommendedIcebergType());
         }
         
         LOGGER.info("NUMBER column analysis completed for {}.{}", sourceSchema, sourceObject);
         return results;
+    }
+
+    /**
+     * Perform a full-table streaming analysis over all rows for NUMBER columns.
+     * Attempts to leverage Oracle PQ via a generic PARALLEL hint; falls back to regular full scan.
+     */
+    public List<NumberColumnAnalysis> analyzeNumberColumnsFull() throws SQLException {
+        final List<String> numberColumns = getNumberColumns();
+        if (numberColumns.isEmpty()) {
+            LOGGER.info("No NUMBER columns found for analysis in {}.{}", sourceSchema, sourceObject);
+            return new ArrayList<>();
+        }
+
+        final List<NumberColumnAnalysis> results = new ArrayList<>(numberColumns.size());
+        for (final String columnName : numberColumns) {
+            results.add(new NumberColumnAnalysis(columnName));
+        }
+
+        // Build projection
+        final StringBuilder columnList = new StringBuilder();
+        for (int i = 0; i < numberColumns.size(); i++) {
+            if (i > 0) columnList.append(", ");
+            columnList.append(numberColumns.get(i));
+        }
+
+        final Long scn = tryFetchCurrentScn();
+
+        final String fromClause;
+        if (scn == null) {
+            fromClause = String.format("FROM %s.%s t", sourceSchema, sourceObject);
+        } else {
+            // Oracle requires alias after the flashback clause
+            fromClause = String.format("FROM %s.%s AS OF SCN %d t", sourceSchema, sourceObject, scn.longValue());
+        }
+
+        final int pqDegree = 8;
+        final String sql = String.format(
+                "SELECT /*+ PARALLEL(t, %d) FULL(t) */ %s %s",
+                pqDegree, columnList.toString(), fromClause);
+
+        LOGGER.info("Starting FULL scan inference for {}.{} ({} NUMBER columns){}",
+                sourceSchema, sourceObject, numberColumns.size(), scn == null ? "" : (" at SCN " + scn));
+
+        int rowCounter = 0;
+        final long start = System.currentTimeMillis();
+        try (final PreparedStatement ps = connection.prepareStatement(sql)) {
+            try {
+                ps.setFetchSize(10000);
+            } catch (final Exception e) {
+                // ignore if driver doesn't honor
+            }
+            try (final ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    for (int i = 0; i < numberColumns.size(); i++) {
+                        final NumberColumnAnalysis analysis = results.get(i);
+                        final Object value = rs.getObject(i + 1);
+                        analysis.analyzeValue(value);
+                    }
+                    rowCounter++;
+                    if ((rowCounter % 500000) == 0) {
+                        final long elapsed = System.currentTimeMillis() - start;
+                        LOGGER.info("Processed {} rows in {} ms", rowCounter, elapsed);
+                    }
+                }
+            }
+        }
+
+        for (final NumberColumnAnalysis a : results) {
+            a.finalizeAnalysis();
+        }
+
+        final long elapsed = System.currentTimeMillis() - start;
+        LOGGER.info("Completed FULL scan inference for {}.{}: {} rows in {} ms", sourceSchema, sourceObject, rowCounter, elapsed);
+        return results;
+    }
+    
+    /**
+     * ORA_HASH(ROWID) client-parallel full scan when PQ is unavailable/undesired.
+     * Controls via system properties:
+     *   -Dora2iceberg.workers=N (default 0 disables; when >0, use N workers)
+     *   -Dora2iceberg.fetchSize=K (default 10000)
+     */
+    public List<NumberColumnAnalysis> analyzeNumberColumnsFullRowIdParallel(final String jdbcUrl, final String user, final String password) throws SQLException {
+        final int workers = Integer.getInteger("ora2iceberg.workers", 0);
+        if (workers <= 0) {
+            return analyzeNumberColumnsFull();
+        }
+
+        final List<String> numberColumns = getNumberColumns();
+        if (numberColumns.isEmpty()) {
+            return new ArrayList<>();
+        }
+        final List<NumberColumnAnalysis> merged = new ArrayList<>(numberColumns.size());
+        for (final String c : numberColumns) merged.add(new NumberColumnAnalysis(c));
+
+        final StringBuilder projection = new StringBuilder();
+        for (int i = 0; i < numberColumns.size(); i++) {
+            if (i > 0) projection.append(", ");
+            projection.append(numberColumns.get(i));
+        }
+
+        final Long scn = tryFetchCurrentScn();
+        final String baseFrom = scn == null
+                ? String.format("%s.%s t", sourceSchema, sourceObject)
+                : String.format("%s.%s AS OF SCN %d t", sourceSchema, sourceObject, scn.longValue());
+
+        final int fetchSize = Integer.getInteger("ora2iceberg.fetchSize", 10000);
+
+        final ExecutorService pool = Executors.newFixedThreadPool(workers);
+        final List<Future<List<NumberColumnAnalysis>>> futures = new ArrayList<>(workers);
+        for (int k = 0; k < workers; k++) {
+            final int bucket = k;
+            futures.add(pool.submit(new Callable<List<NumberColumnAnalysis>>() {
+                @Override
+                public List<NumberColumnAnalysis> call() throws Exception {
+                    try (final Connection c = java.sql.DriverManager.getConnection(jdbcUrl, user, password)) {
+                        final List<NumberColumnAnalysis> local = new ArrayList<>(numberColumns.size());
+                        for (final String col : numberColumns) local.add(new NumberColumnAnalysis(col));
+                        final String sql = String.format(
+                                "SELECT %s FROM %s WHERE ORA_HASH(ROWID, %d) = %d",
+                                projection.toString(), baseFrom, workers - 1, bucket);
+                        try (final PreparedStatement ps = c.prepareStatement(sql)) {
+                            try { ps.setFetchSize(fetchSize); } catch (Throwable ignore) {}
+                            try (final ResultSet rs = ps.executeQuery()) {
+                                while (rs.next()) {
+                                    for (int i = 0; i < numberColumns.size(); i++) {
+                                        local.get(i).analyzeValue(rs.getObject(i + 1));
+                                    }
+                                }
+                            }
+                        }
+                        for (final NumberColumnAnalysis a : local) a.finalizeAnalysis();
+                        return local;
+                    }
+                }
+            }));
+        }
+
+        pool.shutdown();
+        for (final Future<List<NumberColumnAnalysis>> f : futures) {
+            try {
+                final List<NumberColumnAnalysis> part = f.get();
+                for (int i = 0; i < merged.size(); i++) {
+                    final NumberColumnAnalysis target = merged.get(i);
+                    final NumberColumnAnalysis src = part.get(i);
+                    // merge counters and maxima
+                    target.totalValues += src.totalValues;
+                    target.nullValues += src.nullValues;
+                    target.integerValues += src.integerValues;
+                    target.longValues += src.longValues;
+                    target.decimalValues += src.decimalValues;
+                    target.maxPrecision = Math.max(target.maxPrecision, src.maxPrecision);
+                    target.maxScale = Math.max(target.maxScale, src.maxScale);
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                throw new SQLException(e);
+            }
+        }
+        for (final NumberColumnAnalysis a : merged) a.finalizeAnalysis();
+        return merged;
+    }
+
+    private Long tryFetchCurrentScn() {
+        // Try v$database first
+        try (final PreparedStatement ps = connection.prepareStatement("SELECT current_scn FROM v$database");
+             final ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+        } catch (final SQLException ignore) {
+            // ignore
+        }
+        // Try DBMS_FLASHBACK
+        try (final PreparedStatement ps = connection.prepareStatement("SELECT dbms_flashback.get_system_change_number FROM dual");
+             final ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+        } catch (final SQLException ignore) {
+            // ignore
+        }
+        return null;
+    }
+
+    /** Inject externally computed inference results so they are written to JSON. */
+    public void setInferenceResults(final List<NumberColumnAnalysis> analysis) {
+        this.inferenceByColumn.clear();
+        if (analysis != null) {
+            for (final NumberColumnAnalysis a : analysis) {
+                this.inferenceByColumn.put(a.getColumnName(), a);
+            }
+        }
+    }
+
+    /**
+     * Set optional type mapper to align JSON recommendations with migration mapping/overrides.
+     */
+    public void setTypeMapper(final Ora2IcebergTypeMapper mapper) {
+        this.typeMapper = mapper;
     }
     
     private int calculateSampleSize(final long totalRows) {
@@ -629,6 +882,291 @@ public class OracleMetadataExtractor {
     
     private double calculateSamplePercent(final int sampleSize, final long totalRows) {
         return Math.min(100.0, (double) sampleSize / totalRows * 100.0);
+    }
+    
+    /**
+     * Extract data using parallel queries based on unique index ranges with detailed performance monitoring
+     */
+    private boolean extractDataParallel(final List<String> numberColumns, final List<NumberColumnAnalysis> results, final int sampleSize) throws SQLException {
+        final long parallelStartTime = System.currentTimeMillis();
+        LOGGER.info("=== PARALLEL EXTRACTION START ===");
+        
+        final List<UniqueIndex> uniqueIndexes = getUniqueIndexes();
+        
+        // Find a single-column numeric unique index suitable for range queries
+        UniqueIndex bestIndex = null;
+        String indexColumn = null;
+        
+        final long indexSearchStart = System.currentTimeMillis();
+        for (final UniqueIndex index : uniqueIndexes) {
+            if (index.getColumnCount() == 1) {
+                final String columnName = index.getColumns().get(0);
+                LOGGER.debug("Checking index {} on column {} for numeric compatibility", index.getName(), columnName);
+                // Check if this column is numeric (suitable for range queries)
+                if (isNumericColumn(columnName)) {
+                    bestIndex = index;
+                    indexColumn = columnName;
+                    LOGGER.info("Selected index {} on numeric column {} for parallel extraction", index.getName(), columnName);
+                    break;
+                } else {
+                    LOGGER.debug("Index {} on column {} is not suitable (not numeric)", index.getName(), columnName);
+                }
+            } else {
+                LOGGER.debug("Index {} has {} columns (need single-column index for range queries)", index.getName(), index.getColumnCount());
+            }
+        }
+        
+        final long indexSearchTime = System.currentTimeMillis() - indexSearchStart;
+        LOGGER.info("Index selection completed in {} ms", indexSearchTime);
+        
+        if (bestIndex == null) {
+            LOGGER.info("No suitable numeric single-column unique index found for parallel extraction");
+            return false; // No suitable index for parallel extraction
+        }
+        
+        // Get min/max values for the index column to determine ranges
+        LOGGER.info("Determining value range for parallel extraction using index {}", bestIndex.getName());
+        final String minMaxSql = String.format(
+            "SELECT /*+ INDEX(%s %s) */ MIN(%s), MAX(%s) FROM %s.%s", 
+            sourceObject, bestIndex.getName(), indexColumn, indexColumn, sourceSchema, sourceObject);
+        
+        LOGGER.debug("MIN/MAX SQL: {}", minMaxSql);
+        final long minMaxStart = System.currentTimeMillis();
+        
+        long minValue, maxValue;
+        try (final PreparedStatement ps = connection.prepareStatement(minMaxSql);
+             final ResultSet rs = ps.executeQuery()) {
+            if (!rs.next()) {
+                LOGGER.warn("No data returned from MIN/MAX query for {}.{}", sourceSchema, sourceObject);
+                return false;
+            }
+            minValue = rs.getLong(1);
+            maxValue = rs.getLong(2);
+        }
+        
+        final long minMaxTime = System.currentTimeMillis() - minMaxStart;
+        LOGGER.info("MIN/MAX query completed in {} ms: range {} to {} (span: {})", 
+                   minMaxTime, minValue, maxValue, maxValue - minValue + 1);
+        
+        // Calculate ranges for parallel extraction (4 threads)
+        final int numThreads = 4;
+        final long totalRange = maxValue - minValue + 1;
+        final long rangeSize = totalRange / numThreads;
+        final int targetPerThread = sampleSize / numThreads;
+        
+        LOGGER.info("Parallel extraction plan: {} threads, {} samples per thread, {} range size per thread", 
+                   numThreads, targetPerThread, rangeSize);
+        
+        // Build column list for SELECT
+        final StringBuilder columnList = new StringBuilder();
+        for (int i = 0; i < numberColumns.size(); i++) {
+            if (i > 0) columnList.append(", ");
+            columnList.append(numberColumns.get(i));
+        }
+        LOGGER.debug("Column list for extraction ({} columns): {}", numberColumns.size(), 
+                    columnList.length() > 200 ? columnList.substring(0, 200) + "..." : columnList.toString());
+        
+        int totalSampled = 0;
+        final long[] chunkTimes = new long[numThreads];
+        final int[] chunkSamples = new int[numThreads];
+        final long extractionStartTime = System.currentTimeMillis();
+        
+        // Extract data in parallel ranges
+        for (int thread = 0; thread < numThreads && totalSampled < sampleSize; thread++) {
+            final long chunkStart = System.currentTimeMillis();
+            final long rangeStart = minValue + (thread * rangeSize);
+            final long rangeEnd = (thread == numThreads - 1) ? maxValue : rangeStart + rangeSize - 1;
+            final int remainingSamples = sampleSize - totalSampled;
+            final int threadSamples = Math.min(targetPerThread, remainingSamples);
+            
+            LOGGER.info("CHUNK {} START: Range {}-{} (size: {}), target samples: {}", 
+                       thread + 1, rangeStart, rangeEnd, rangeEnd - rangeStart + 1, threadSamples);
+            
+            final String rangeSql = String.format(
+                "SELECT /*+ INDEX(%s %s) FIRST_ROWS(%d) */ %s FROM %s.%s WHERE %s BETWEEN ? AND ? AND ROWNUM <= ?",
+                sourceObject, bestIndex.getName(), threadSamples, columnList.toString(), sourceSchema, sourceObject, indexColumn);
+            
+            LOGGER.debug("CHUNK {} SQL: {}", thread + 1, rangeSql.length() > 300 ? rangeSql.substring(0, 300) + "..." : rangeSql);
+            
+            final long sqlPrepStart = System.currentTimeMillis();
+            try (final PreparedStatement ps = connection.prepareStatement(rangeSql)) {
+                ps.setLong(1, rangeStart);
+                ps.setLong(2, rangeEnd);
+                ps.setInt(3, threadSamples);
+                
+                final long sqlPrepTime = System.currentTimeMillis() - sqlPrepStart;
+                LOGGER.debug("CHUNK {} SQL preparation: {} ms", thread + 1, sqlPrepTime);
+                
+                final long executeStart = System.currentTimeMillis();
+                try (final ResultSet rs = ps.executeQuery()) {
+                    final long executeTime = System.currentTimeMillis() - executeStart;
+                    LOGGER.debug("CHUNK {} SQL execution: {} ms", thread + 1, executeTime);
+                    
+                    final long fetchStart = System.currentTimeMillis();
+                    int threadSampledRows = 0;
+                    int rowsProcessed = 0;
+                    
+                    while (rs.next() && threadSampledRows < threadSamples && totalSampled < sampleSize) {
+                        for (int i = 0; i < numberColumns.size(); i++) {
+                            final NumberColumnAnalysis analysis = results.get(i);
+                            final Object value = rs.getObject(i + 1);
+                            analysis.analyzeValue(value);
+                        }
+                        threadSampledRows++;
+                        totalSampled++;
+                        rowsProcessed++;
+                        
+                        // Log progress every 5000 rows
+                        if (rowsProcessed % 5000 == 0) {
+                            final long currentTime = System.currentTimeMillis();
+                            final double rowsPerSec = rowsProcessed * 1000.0 / (currentTime - fetchStart);
+                            LOGGER.debug("CHUNK {} progress: {} rows processed, {:.0f} rows/sec", 
+                                       thread + 1, rowsProcessed, rowsPerSec);
+                        }
+                    }
+                    
+                    final long fetchTime = System.currentTimeMillis() - fetchStart;
+                    final long chunkTime = System.currentTimeMillis() - chunkStart;
+                    chunkTimes[thread] = chunkTime;
+                    chunkSamples[thread] = threadSampledRows;
+                    
+                    final double chunkRowsPerSec = threadSampledRows * 1000.0 / Math.max(fetchTime, 1);
+                    final double chunkMBPerSec = (threadSampledRows * numberColumns.size() * 8) / (1024.0 * 1024.0) / Math.max(fetchTime / 1000.0, 0.001);
+                    
+                    LOGGER.info("CHUNK {} COMPLETE: {} rows in {} ms (exec: {}ms, fetch: {}ms) | {:.0f} rows/sec, {:.2f} MB/sec", 
+                               thread + 1, threadSampledRows, chunkTime, executeTime, fetchTime, chunkRowsPerSec, chunkMBPerSec);
+                }
+            } catch (final SQLException e) {
+                final long chunkTime = System.currentTimeMillis() - chunkStart;
+                LOGGER.error("CHUNK {} FAILED after {} ms: {}", thread + 1, chunkTime, e.getMessage());
+                chunkTimes[thread] = chunkTime;
+                chunkSamples[thread] = 0;
+            }
+        }
+        
+        final long totalExtractionTime = System.currentTimeMillis() - extractionStartTime;
+        final long totalParallelTime = System.currentTimeMillis() - parallelStartTime;
+        
+        // Performance summary
+        LOGGER.info("=== PARALLEL EXTRACTION SUMMARY ===");
+        LOGGER.info("Total samples extracted: {}", totalSampled);
+        LOGGER.info("Total extraction time: {} ms", totalExtractionTime);
+        LOGGER.info("Total parallel operation time: {} ms", totalParallelTime);
+        
+        if (totalSampled > 0) {
+            final double totalRowsPerSec = totalSampled * 1000.0 / Math.max(totalExtractionTime, 1);
+            final double totalMBPerSec = (totalSampled * numberColumns.size() * 8) / (1024.0 * 1024.0) / Math.max(totalExtractionTime / 1000.0, 0.001);
+            LOGGER.info("Overall throughput: {:.0f} rows/sec, {:.2f} MB/sec", totalRowsPerSec, totalMBPerSec);
+        }
+        
+        // Individual chunk performance
+        for (int i = 0; i < numThreads; i++) {
+            if (chunkSamples[i] > 0) {
+                final double chunkRowsPerSec = chunkSamples[i] * 1000.0 / Math.max(chunkTimes[i], 1);
+                LOGGER.info("Chunk {} performance: {} rows in {} ms ({:.0f} rows/sec)", 
+                           i + 1, chunkSamples[i], chunkTimes[i], chunkRowsPerSec);
+            }
+        }
+        
+        LOGGER.info("=== PARALLEL EXTRACTION END ===");
+        return true;
+    }
+    
+    /**
+     * Extract data using optimized sequential query (fallback) with performance monitoring
+     */
+    private void extractDataSequential(final List<String> numberColumns, final List<NumberColumnAnalysis> results, final int sampleSize, final long rowCount) throws SQLException {
+        final long sequentialStartTime = System.currentTimeMillis();
+        LOGGER.info("=== SEQUENTIAL EXTRACTION START ===");
+        
+        final StringBuilder columnList = new StringBuilder();
+        for (int i = 0; i < numberColumns.size(); i++) {
+            if (i > 0) columnList.append(", ");
+            columnList.append(numberColumns.get(i));
+        }
+        
+        final double samplePercent = calculateSamplePercent(sampleSize, rowCount);
+        LOGGER.info("Sequential extraction plan: {} samples from {} total rows ({}% sample rate)", 
+                   sampleSize, rowCount, String.format("%.4f", samplePercent));
+        
+        // Use TABLESAMPLE instead of SAMPLE BLOCK for better performance
+        final String sql = String.format(
+            "SELECT /*+ FIRST_ROWS(%d) */ %s FROM %s.%s TABLESAMPLE(%.4f) WHERE ROWNUM <= ?",
+            sampleSize, columnList.toString(), sourceSchema, sourceObject, samplePercent);
+        
+        LOGGER.debug("Sequential SQL: {}", sql.length() > 300 ? sql.substring(0, 300) + "..." : sql);
+        
+        final long sqlPrepStart = System.currentTimeMillis();
+        try (final PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, sampleSize);
+            
+            final long sqlPrepTime = System.currentTimeMillis() - sqlPrepStart;
+            LOGGER.info("SQL preparation: {} ms", sqlPrepTime);
+            
+            final long executeStart = System.currentTimeMillis();
+            try (final ResultSet rs = ps.executeQuery()) {
+                final long executeTime = System.currentTimeMillis() - executeStart;
+                LOGGER.info("SQL execution: {} ms", executeTime);
+                
+                final long fetchStart = System.currentTimeMillis();
+                int sampledRows = 0;
+                
+                while (rs.next() && sampledRows < sampleSize) {
+                    for (int i = 0; i < numberColumns.size(); i++) {
+                        final NumberColumnAnalysis analysis = results.get(i);
+                        final Object value = rs.getObject(i + 1);
+                        analysis.analyzeValue(value);
+                    }
+                    sampledRows++;
+                    
+                    // Log progress every 10000 rows
+                    if (sampledRows % 10000 == 0) {
+                        final long currentTime = System.currentTimeMillis();
+                        final double rowsPerSec = sampledRows * 1000.0 / (currentTime - fetchStart);
+                        LOGGER.info("Sequential progress: {} rows processed, {:.0f} rows/sec", 
+                                   sampledRows, rowsPerSec);
+                    }
+                }
+                
+                final long fetchTime = System.currentTimeMillis() - fetchStart;
+                final long totalTime = System.currentTimeMillis() - sequentialStartTime;
+                
+                final double totalRowsPerSec = sampledRows * 1000.0 / Math.max(fetchTime, 1);
+                final double totalMBPerSec = (sampledRows * numberColumns.size() * 8) / (1024.0 * 1024.0) / Math.max(fetchTime / 1000.0, 0.001);
+                
+                LOGGER.info("=== SEQUENTIAL EXTRACTION SUMMARY ===");
+                LOGGER.info("Total samples extracted: {}", sampledRows);
+                LOGGER.info("SQL execution time: {} ms", executeTime);
+                LOGGER.info("Data fetch time: {} ms", fetchTime);
+                LOGGER.info("Total operation time: {} ms", totalTime);
+                LOGGER.info("Overall throughput: {:.0f} rows/sec, {:.2f} MB/sec", totalRowsPerSec, totalMBPerSec);
+                LOGGER.info("=== SEQUENTIAL EXTRACTION END ===");
+            }
+        }
+    }
+    
+    /**
+     * Check if a column is numeric (suitable for range queries)
+     */
+    private boolean isNumericColumn(final String columnName) throws SQLException {
+        final String sql = "SELECT data_type FROM all_tab_columns WHERE owner = UPPER(?) AND table_name = UPPER(?) AND column_name = UPPER(?)";
+        
+        try (final PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, sourceSchema);
+            ps.setString(2, sourceObject);
+            ps.setString(3, columnName);
+            
+            try (final ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    final String dataType = rs.getString("data_type");
+                    return "NUMBER".equals(dataType);
+                }
+            }
+        } catch (final SQLException e) {
+            LOGGER.debug("Failed to check if column {} is numeric: {}", columnName, e.getMessage());
+        }
+        
+        return false;
     }
     
     /**
@@ -685,48 +1223,63 @@ public class OracleMetadataExtractor {
             }
         }
         
-        // Fallback: Oracle data dictionary for Oracle EBS environments
+        // Fallback: Oracle data dictionary with optimized two-step approach
         if (uniqueIndexes.isEmpty()) {
-            LOGGER.info("No unique indexes found via DatabaseMetaData, querying Oracle data dictionary for {}.{}", 
+            LOGGER.info("No unique indexes found via DatabaseMetaData, trying optimized Oracle data dictionary queries for {}.{}", 
                        sourceSchema, sourceObject);
             
-            final String uniqueIndexesSql = 
-                "SELECT ui.index_name, uic.column_name, uic.column_position " +
-                "FROM all_indexes ui " +
-                "JOIN all_ind_columns uic ON ui.owner = uic.index_owner AND ui.index_name = uic.index_name " +
-                "WHERE ui.owner = UPPER(?) AND ui.table_name = UPPER(?) AND ui.uniqueness = 'UNIQUE' " +
-                "ORDER BY ui.index_name, uic.column_position";
+            // Step 1: Get unique index names only (fast query) 
+            final String uniqueIndexNamesSql = 
+                "SELECT /*+ FIRST_ROWS(20) */ index_name " +
+                "FROM all_indexes " +
+                "WHERE owner = UPPER(?) AND table_name = UPPER(?) AND uniqueness = 'UNIQUE' " +
+                "AND ROWNUM <= 50"; // More generous limit for programmatic access
             
-            try (final PreparedStatement ps = connection.prepareStatement(uniqueIndexesSql)) {
-                ps.setString(1, sourceSchema);
-                ps.setString(2, sourceObject);
-                ps.setQueryTimeout(30); // 30 second timeout for Oracle EBS
+            try (final PreparedStatement ps1 = connection.prepareStatement(uniqueIndexNamesSql)) {
+                ps1.setString(1, sourceSchema);
+                ps1.setString(2, sourceObject);
+                ps1.setQueryTimeout(10); // Quick timeout for index names
                 
-                try (final ResultSet rs = ps.executeQuery()) {
-                    String currentIndexName = null;
-                    final List<String> currentIndexColumns = new ArrayList<>();
-                    
-                    while (rs.next()) {
-                        final String indexName = rs.getString("index_name");
-                        final String columnName = rs.getString("column_name");
-                        
-                        // If we hit a new index, save the previous one
-                        if (currentIndexName != null && !indexName.equals(currentIndexName)) {
-                            if (!currentIndexColumns.isEmpty()) {
-                                uniqueIndexes.add(new UniqueIndex(currentIndexName, new ArrayList<>(currentIndexColumns)));
-                            }
-                            currentIndexColumns.clear();
-                        }
-                        
-                        currentIndexName = indexName;
-                        currentIndexColumns.add(columnName);
+                final List<String> indexNames = new ArrayList<>();
+                try (final ResultSet rs1 = ps1.executeQuery()) {
+                    while (rs1.next()) {
+                        indexNames.add(rs1.getString("index_name"));
                     }
+                    LOGGER.debug("Found {} unique indexes for {}.{}", indexNames.size(), sourceSchema, sourceObject);
+                }
+                
+                // Step 2: Get columns for each index separately (avoids slow JOIN)
+                if (!indexNames.isEmpty()) {
+                    final String indexColumnsSql = 
+                        "SELECT /*+ FIRST_ROWS */ column_name " +
+                        "FROM all_ind_columns " +
+                        "WHERE index_owner = UPPER(?) AND index_name = ? " +
+                        "ORDER BY column_position";
                     
-                    // Add the last index
-                    if (currentIndexName != null && !currentIndexColumns.isEmpty()) {
-                        uniqueIndexes.add(new UniqueIndex(currentIndexName, currentIndexColumns));
+                    try (final PreparedStatement ps2 = connection.prepareStatement(indexColumnsSql)) {
+                        ps2.setQueryTimeout(5); // Quick timeout per index
+                        
+                        for (final String indexName : indexNames) {
+                            ps2.setString(1, sourceSchema);
+                            ps2.setString(2, indexName);
+                            
+                            final List<String> indexColumns = new ArrayList<>();
+                            try (final ResultSet rs2 = ps2.executeQuery()) {
+                                while (rs2.next()) {
+                                    indexColumns.add(rs2.getString("column_name"));
+                                }
+                                if (!indexColumns.isEmpty()) {
+                                    uniqueIndexes.add(new UniqueIndex(indexName, indexColumns));
+                                    LOGGER.debug("Found unique index: {} with {} columns", indexName, indexColumns.size());
+                                }
+                            } catch (SQLException e) {
+                                LOGGER.debug("Failed to get columns for index {}: {}", indexName, e.getMessage());
+                            }
+                        }
                     }
                 }
+            } catch (SQLException e) {
+                LOGGER.warn("Failed to query unique indexes for {}.{}: {}", sourceSchema, sourceObject, e.getMessage());
             }
         }
         
@@ -856,8 +1409,12 @@ public class OracleMetadataExtractor {
             }
             // Otherwise use decimal with appropriate precision/scale
             else {
-                final int recPrecision = Math.max(10, maxPrecision);
-                final int recScale = Math.max(2, maxScale);
+                int recPrecision = Math.max(10, maxPrecision);
+                int recScale = Math.max(2, maxScale);
+                // Clamp to Iceberg max precision 38 and keep scale <= precision
+                if (recPrecision > 38) recPrecision = 38;
+                if (recScale > recPrecision) recScale = recPrecision;
+                if (recScale < 0) recScale = 0;
                 recommendedType = String.format("decimal(%d,%d)", recPrecision, recScale);
             }
         }

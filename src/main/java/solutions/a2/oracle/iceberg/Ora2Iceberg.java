@@ -13,7 +13,13 @@
 
 package solutions.a2.oracle.iceberg;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.lang.reflect.Constructor;
 //import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -884,23 +890,39 @@ public class Ora2Iceberg {
 			
 			// Extract metadata using our new class
 			final OracleMetadataExtractor extractor = new OracleMetadataExtractor(connection, sourceSchema, sourceObject);
-			extractor.extractAndSave(outputDir);
-			
-			// Perform NUMBER column analysis if requested
+			// Provide mapper to extractor for consistent recommendations
+			final String defaultNumeric = cmd.getOptionValue("default-number-type", DEFAULT_NUMBER_FORMAT);
+			final String dataTypeMapForMeta = cmd.getOptionValue(OPT_DATA_TYPE_MAP_SHORT);
+			extractor.setTypeMapper(new Ora2IcebergTypeMapper(defaultNumeric, dataTypeMapForMeta));
+			// If inference requested, run full-scan analysis first and include in JSON
 			if (cmd.hasOption(OPT_INFER_TYPES_SHORT)) {
-				LOGGER.info("Starting NUMBER column type inference analysis");
-				final List<OracleMetadataExtractor.NumberColumnAnalysis> analysis = extractor.analyzeNumberColumns();
-				
-				// Log results for immediate feedback
-				for (final OracleMetadataExtractor.NumberColumnAnalysis columnAnalysis : analysis) {
-					LOGGER.info("NUMBER column analysis: {} -> {}", 
-							   columnAnalysis.getColumnName(), 
-							   columnAnalysis.getRecommendedIcebergType());
+				final int workers = Integer.getInteger("ora2iceberg.workers", 0);
+				if (workers > 0) {
+					LOGGER.info("Starting NUMBER column type inference using ORA_HASH(ROWID) with {} workers", workers);
+					final List<OracleMetadataExtractor.NumberColumnAnalysis> analysis =
+							extractor.analyzeNumberColumnsFullRowIdParallel(sourceUrl, sourceUser, sourcePassword);
+					extractor.setInferenceResults(analysis);
+					for (final OracleMetadataExtractor.NumberColumnAnalysis columnAnalysis : analysis) {
+						LOGGER.info("NUMBER column analysis: {} -> {}",
+								   columnAnalysis.getColumnName(),
+								   columnAnalysis.getRecommendedIcebergType());
+					}
+					LOGGER.info("NUMBER column type inference completed for {} columns", analysis.size());
+					writeTypeMapFile(cmd.getOptionValue(OPT_OUTPUT_DIR_SHORT, "."), sourceSchema, sourceObject, analysis);
+				} else {
+					LOGGER.info("Starting NUMBER column type inference analysis (PQ/full scan)");
+					final List<OracleMetadataExtractor.NumberColumnAnalysis> analysis = extractor.analyzeNumberColumnsFull();
+					extractor.setInferenceResults(analysis);
+					for (final OracleMetadataExtractor.NumberColumnAnalysis columnAnalysis : analysis) {
+						LOGGER.info("NUMBER column analysis: {} -> {}",
+								   columnAnalysis.getColumnName(),
+								   columnAnalysis.getRecommendedIcebergType());
+					}
+					LOGGER.info("NUMBER column type inference completed for {} columns", analysis.size());
+					writeTypeMapFile(cmd.getOptionValue(OPT_OUTPUT_DIR_SHORT, "."), sourceSchema, sourceObject, analysis);
 				}
-				
-				LOGGER.info("NUMBER column type inference completed for {} columns", analysis.size());
 			}
-			
+			extractor.extractAndSave(outputDir);
 			LOGGER.info("Metadata extraction completed successfully");
 		}
 	}
@@ -914,6 +936,30 @@ public class Ora2Iceberg {
 			}
 		}
 		return false;
+	}
+
+	private static void writeTypeMapFile(final String outputDir, final String sourceSchema, final String sourceObject, final List<OracleMetadataExtractor.NumberColumnAnalysis> analysis) {
+		final String typeMapFileName = "type_map.json";
+		final File typeMapFile = new File(outputDir, typeMapFileName);
+		try (final BufferedWriter writer = new BufferedWriter(new FileWriter(typeMapFile))) {
+			writer.write("{\n");
+			writer.write("  \"source_schema\": \"" + sourceSchema + "\",\n");
+			writer.write("  \"source_object\": \"" + sourceObject + "\",\n");
+			writer.write("  \"type_map\": {\n");
+			boolean first = true;
+			for (final OracleMetadataExtractor.NumberColumnAnalysis columnAnalysis : analysis) {
+				if (!first) {
+					writer.write(",\n");
+				}
+				writer.write("    \"" + columnAnalysis.getColumnName() + "\": \"" + columnAnalysis.getRecommendedIcebergType() + "\"");
+				first = false;
+			}
+			writer.write("\n  }\n");
+			writer.write("}\n");
+			LOGGER.info("Type map file '{}' written successfully.", typeMapFile.getAbsolutePath());
+		} catch (IOException e) {
+			LOGGER.error("Failed to write type map file '{}': {}", typeMapFile.getAbsolutePath(), e.getMessage());
+		}
 	}
 
 }

@@ -236,5 +236,20 @@ public class Ora2IcebergTypeMapper {
 
 	}
 
+	/**
+	 * Add or replace an exact column override at runtime using the same syntax
+	 * as -m mappings for NUMBER: target could be INTEGER, BIGINT/LONG, DOUBLE, FLOAT, or DECIMAL(p,s).
+	 */
+	public void addExactOverride(final String columnName, final String numberTargetSpec) {
+		if (StringUtils.isBlank(columnName) || StringUtils.isBlank(numberTargetSpec)) {
+			return;
+		}
+		final String spec = "NUMBER=" + numberTargetSpec;
+		final Triple<Integer, Integer, Integer> typeDef = override(spec);
+		if (typeDef != null) {
+			exactOverrides.put(StringUtils.upperCase(columnName), typeDef);
+		}
+	}
+
 
 }
