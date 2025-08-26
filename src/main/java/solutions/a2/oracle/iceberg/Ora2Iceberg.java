@@ -142,6 +142,12 @@ public class Ora2Iceberg {
 	private static final String OPT_ICEBERG_ID_COLS_SHORT = "I";
 	private static final String OPT_ICEBERG_MAX_SIZE = "iceberg-max-file-size";
 	private static final String OPT_ICEBERG_MAX_SIZE_SHORT = "Z";
+	private static final String OPT_EXTRACT_METADATA = "extract-metadata";
+	private static final String OPT_EXTRACT_METADATA_SHORT = "E";
+	private static final String OPT_INFER_TYPES = "infer-types";
+	private static final String OPT_INFER_TYPES_SHORT = "F";
+	private static final String OPT_OUTPUT_DIR = "output";
+	private static final String OPT_OUTPUT_DIR_SHORT = "O";
 
 	@SuppressWarnings("unchecked")
 	public static void main(String[] argv) {
@@ -158,6 +164,34 @@ public class Ora2Iceberg {
 			cmd = parser.parse(options, argv);
 		} catch (ParseException pe) {
 			LOGGER.error(pe.getMessage());
+			formatter.printHelp(Ora2Iceberg.class.getCanonicalName(), options);
+			System.exit(1);
+		}
+
+		// NEW: Early exit for metadata extraction - completely separate from migration
+		if (cmd.hasOption(OPT_EXTRACT_METADATA_SHORT)) {
+			try {
+				extractMetadata(cmd);
+			} catch (final Exception e) {
+				LOGGER.error("Metadata extraction failed: {}", e.getMessage());
+				System.exit(1);
+			}
+			return; // Exit early - don't run migration
+		}
+
+		// Validate migration-required parameters (only needed when not extracting metadata)
+		if (!cmd.hasOption(OPT_ICEBERG_CATALOG_IMPL_SHORT)) {
+			LOGGER.error("Missing required option: -T/--iceberg-catalog-type");
+			formatter.printHelp(Ora2Iceberg.class.getCanonicalName(), options);
+			System.exit(1);
+		}
+		if (!cmd.hasOption("C")) {
+			LOGGER.error("Missing required option: -C/--iceberg-catalog");
+			formatter.printHelp(Ora2Iceberg.class.getCanonicalName(), options);
+			System.exit(1);
+		}
+		if (!cmd.hasOption("H")) {
+			LOGGER.error("Missing required option: -H/--iceberg-warehouse");
 			formatter.printHelp(Ora2Iceberg.class.getCanonicalName(), options);
 			System.exit(1);
 		}
@@ -684,7 +718,7 @@ public class Ora2Iceberg {
 		final Option catalogImpl = Option.builder(OPT_ICEBERG_CATALOG_IMPL_SHORT)
 				.longOpt(OPT_ICEBERG_CATALOG_IMPL)
 				.hasArg(true)
-				.required(true)
+				.required(false)
 				.desc("One of " +
 						CATALOG_IMPL_REST + ", " +
 						CATALOG_IMPL_JDBC + ", " +
@@ -701,7 +735,7 @@ public class Ora2Iceberg {
 		final Option catalogName = Option.builder("C")
 				.longOpt("iceberg-catalog")
 				.hasArg(true)
-				.required(true)
+				.required(false)
 				.desc("Apache Iceberg Catalog name")
 				.build();
 		options.addOption(catalogName);
@@ -717,7 +751,7 @@ public class Ora2Iceberg {
 		final Option catalogWarehouse = Option.builder("H")
 				.longOpt("iceberg-warehouse")
 				.hasArg(true)
-				.required(true)
+				.required(false)
 				.desc("Apache Iceberg warehouse location")
 				.build();
 		options.addOption(catalogWarehouse);
@@ -794,6 +828,81 @@ public class Ora2Iceberg {
 				.desc("Custom mappings from source types to Iceberg types. Example: \"ZONE_CONTROL:NUMBER=integer; %_ID:NUMBER=long; LOCATOR_%:NUMBER=decimal(38,0)\"")
 				.build();
 		options.addOption(dataTypeMap);
+
+		// NEW: Metadata extraction options
+		final Option extractMetadata = Option.builder(OPT_EXTRACT_METADATA_SHORT)
+				.longOpt(OPT_EXTRACT_METADATA)
+				.hasArg(false)
+				.required(false)
+				.desc("Extract metadata only (no migration). Analyzes Oracle table structure and generates JSON metadata file with Iceberg type recommendations.")
+				.build();
+		options.addOption(extractMetadata);
+
+		final Option inferTypes = Option.builder(OPT_INFER_TYPES_SHORT)
+				.longOpt(OPT_INFER_TYPES)
+				.hasArg(false)
+				.required(false)
+				.desc("Infer optimal Iceberg types by analyzing NUMBER column data. Must be used with --extract-metadata.")
+				.build();
+		options.addOption(inferTypes);
+
+		final Option outputDir = Option.builder(OPT_OUTPUT_DIR_SHORT)
+				.longOpt(OPT_OUTPUT_DIR)
+				.hasArg(true)
+				.required(false)
+				.desc("Output directory for metadata files (default: current directory)")
+				.build();
+		options.addOption(outputDir);
+	}
+
+	private static void extractMetadata(final CommandLine cmd) throws SQLException, IOException {
+		// Get required parameters - same pattern as main migration
+		final String sourceUrl = cmd.getOptionValue(OPT_SOURCE_JDBC_URL_SHORT);
+		final String sourceUser = cmd.getOptionValue(OPT_SOURCE_JDBC_USER_SHORT);
+		final String sourcePassword = cmd.getOptionValue(OPT_SOURCE_JDBC_PW_SHORT);
+		final String sourceObject = cmd.getOptionValue(OPT_ICEBERG_SOURCE_OBJECT_SHORT);
+		final String outputDir = cmd.getOptionValue(OPT_OUTPUT_DIR_SHORT, ".");
+		
+		// Determine source schema - same logic as main migration
+		final String sourceSchema;
+		if (StringUtils.isBlank(cmd.getOptionValue(OPT_ICEBERG_SOURCE_SCHEMA_SHORT))) {
+			sourceSchema = sourceUser; // Default to username
+		} else {
+			sourceSchema = cmd.getOptionValue(OPT_ICEBERG_SOURCE_SCHEMA_SHORT);
+		}
+		
+		LOGGER.info("Starting metadata extraction for {}.{}", sourceSchema, sourceObject);
+		
+		// Create connection - same pattern as main method
+		try (final Connection connection = DriverManager.getConnection(sourceUrl, sourceUser, sourcePassword)) {
+			final DatabaseMetaData dbMetaData = connection.getMetaData();
+			LOGGER.info("Connected to {} {} using {} {}", 
+					dbMetaData.getDatabaseProductName(), 
+					dbMetaData.getDatabaseProductVersion(),
+					dbMetaData.getDriverName(), 
+					dbMetaData.getDriverVersion());
+			
+			// Extract metadata using our new class
+			final OracleMetadataExtractor extractor = new OracleMetadataExtractor(connection, sourceSchema, sourceObject);
+			extractor.extractAndSave(outputDir);
+			
+			// Perform NUMBER column analysis if requested
+			if (cmd.hasOption(OPT_INFER_TYPES_SHORT)) {
+				LOGGER.info("Starting NUMBER column type inference analysis");
+				final List<OracleMetadataExtractor.NumberColumnAnalysis> analysis = extractor.analyzeNumberColumns();
+				
+				// Log results for immediate feedback
+				for (final OracleMetadataExtractor.NumberColumnAnalysis columnAnalysis : analysis) {
+					LOGGER.info("NUMBER column analysis: {} -> {}", 
+							   columnAnalysis.getColumnName(), 
+							   columnAnalysis.getRecommendedIcebergType());
+				}
+				
+				LOGGER.info("NUMBER column type inference completed for {} columns", analysis.size());
+			}
+			
+			LOGGER.info("Metadata extraction completed successfully");
+		}
 	}
 
 	private static boolean isDriverLoaded(final String driverClass) {
